@@ -29,11 +29,18 @@ Không gian chassis: mặt đất y = 0, phía trước = −Z, bên phải = +X
    bình xăng, đuôi; mũ thêm cằm + đèn cyan; cổ/đầu tự cân theo độ gập thân nên LowTuck
    không còn chìm đầu vào bình xăng (`05-reference-vs-faceted-body.jpg`, `06-lowtuck-fixed.jpg`).
 
-Số tam giác hiện tại ≈ 47k (xe + người lái).
+5. **Bản chi tiết** — máy lộ sau ốp sườn (lá tản nhiệt, nắp ly hợp + vòng bu-lông, nắp cam, két nước,
+   lọc dầu), 4 cổ pô + ống xả vát cạnh 2 lỗ thoát, đĩa phanh khoan lỗ + chốt nổi, heo dầu + ống dầu,
+   nhông trước/sau có răng, xích ôm nhông + chắn xích, lốp có gân (texture), phuộc sau lò xo,
+   ốp trong đen, hốc đèn pha + đèn ban ngày, xi-nhan gương; người lái thêm giáp nhiều lớp
+   (vai, bắp tay, 3 lớp cẳng tay, ống quyển, giày) và mũ thon có khe gió
+   (`07-reference-vs-detailed.jpg`, `08-mechanical-closeups.jpg`).
+
+Số tam giác hiện tại ≈ 68k (xe + người lái).
 
 ## Còn lại / bước tiếp
 
 - 7 màu xe trong garage đổi màu thật (livery atlas + vertex color người lái), hiện chỉ đổi đèn gầm.
-- Thêm tầng gấp cho ốp xe, lộ động cơ/xích/nhông rõ hơn, mũ thon có khe gió, giáp tay chân nhiều mảnh.
-- Giảm tam giác nếu cần cho máy yếu.
+- Giáp người lái còn dạng bo tròn; ốp xe một tầng gân chính; đốt giáp lưng thử nhưng bỏ (lơ lửng khi gập lưng).
+- Giảm tam giác nếu cần cho máy yếu (LOD: bỏ lỗ khoan đĩa, gân lốp, lá tản nhiệt ở xa).
 - Muốn chất lượng như ảnh mẫu 100%: dựng mô hình Blender (.glb) và nối vào `Vehicle.useModel`.

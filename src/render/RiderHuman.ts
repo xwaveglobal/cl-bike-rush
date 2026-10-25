@@ -341,6 +341,15 @@ export function buildHumanRider(mats: BikeRiderMaterials) {
       ),
       suit, upper, ['Chest', `UpperArm_${sfx}`, `Forearm_${sfx}`, `Hand_${sfx}`], 6,
     );
+    // layered armour: second shoulder plate, upper-arm plate, three overlapping forearm plates
+    add(ellipsoid([sx * 0.01, 0.026, -0.085], [0.046, 0.024, 0.04], solid(COL.silverHi), { w: 18, h: 10 }),
+      mats.riderArmor, upper, [`UpperArm_${sfx}`]);
+    add(ellipsoid([inSign * 0.046, 0, -0.15], [0.012, 0.036, 0.055], solid(COL.silverHi), { w: 14, h: 10 }),
+      mats.riderArmor, upper, [`UpperArm_${sfx}`]);
+    for (const [k, z] of [-0.335, -0.385, -0.435].entries()) {
+      add(ellipsoid([inSign * (0.041 - k * 0.003), 0, z], [0.011, 0.031 - k * 0.003, 0.032], solid(k === 1 ? COL.cobalt : COL.silverHi), { w: 12, h: 8 }),
+        mats.riderArmor, upper, [`Forearm_${sfx}`]);
+    }
     // shoulder slider (titanium cap)
     add(ellipsoid([sx * 0.012, 0.04, -0.035], [0.052, 0.03, 0.062], solid(COL.silverHi), { w: 22, h: 14 }),
       mats.riderArmor, upper, [`UpperArm_${sfx}`]);
@@ -402,6 +411,11 @@ export function buildHumanRider(mats: BikeRiderMaterials) {
       mats.riderArmor, thigh, [`Thigh_${sfx}`, `Shin_${sfx}`], 6);
     add(ellipsoid([sx * 0.058, 0.005, -0.38], [0.012, 0.034, 0.046], solid(COL.cobaltDeep), { w: 16, h: 10 }),
       mats.riderArmor, thigh, [`Thigh_${sfx}`, `Shin_${sfx}`], 6);
+    // shin guard (two plates) over the shin
+    add(ellipsoid([0, 0.05, -0.5], [0.034, 0.014, 0.07], solid(COL.silverHi), { w: 14, h: 10 }),
+      mats.riderArmor, thigh, [`Shin_${sfx}`]);
+    add(ellipsoid([0, 0.046, -0.6], [0.03, 0.013, 0.05], solid(COL.cobalt), { w: 14, h: 10 }),
+      mats.riderArmor, thigh, [`Shin_${sfx}`]);
     // race boot shaft (Shin local) + foot
     add(
       loft(
@@ -430,6 +444,10 @@ export function buildHumanRider(mats: BikeRiderMaterials) {
       ),
       suit, foot, [`Foot_${sfx}`],
     );
+    add(ellipsoid([0, 0.05, -0.27], [0.03, 0.012, 0.06], solid(COL.silverHi), { w: 12, h: 8 }),
+      mats.riderArmor, shin, [`Shin_${sfx}`]);
+    add(ellipsoid([0, 0.0, 0.03], [0.04, 0.03, 0.02], solid(COL.silverHi), { w: 12, h: 8 }),
+      mats.riderArmor, foot, [`Foot_${sfx}`]);
     add(ellipsoid([sx * 0.04, -0.012, -0.11], [0.012, 0.018, 0.04], solid(COL.silverHi), { w: 12, h: 8 }),
       mats.riderArmor, foot, [`Foot_${sfx}`]);
   }
@@ -444,7 +462,7 @@ export function buildHumanRider(mats: BikeRiderMaterials) {
     if (Math.abs(p.x) < 0.014 && ly > 0.03 && lz > -0.09) return COL.silver;
     return COL.black;
   };
-  const shellGeo = ellipsoid(hc, [0.12, 0.128, 0.156], helmetPaint, { w: 30, h: 20 });
+  const shellGeo = ellipsoid(hc, [0.116, 0.124, 0.168], helmetPaint, { w: 30, h: 20 });
   {
     // chin bar: push the lower front forward a little, tuck the lower back in
     const p = shellGeo.attributes.position as THREE.BufferAttribute;
@@ -471,7 +489,7 @@ export function buildHumanRider(mats: BikeRiderMaterials) {
   }
   // visor: front band of a slightly larger sphere (SphereGeometry: phi = 3π/2 faces -Z)
   add(
-    ellipsoid([hc[0], hc[1], hc[2] - 0.004], [0.123, 0.131, 0.161], solid(COL.black), {
+    ellipsoid([hc[0], hc[1], hc[2] - 0.004], [0.119, 0.127, 0.173], solid(COL.black), {
       w: 32, h: 12, phiStart: Math.PI * 1.5 - 1.0, phiLength: 2.0, thetaStart: 1.02, thetaLength: 0.7,
     }),
     mats.visor, head, ['Head'],
@@ -479,13 +497,20 @@ export function buildHumanRider(mats: BikeRiderMaterials) {
   // rear cyan light strips + small aero spoiler
   for (const th of [1.2, 1.33]) {
     add(
-      ellipsoid(hc, [0.1215, 0.1295, 0.1575], solid(COL.pearl), {
+      ellipsoid(hc, [0.1175, 0.1255, 0.1695], solid(COL.pearl), {
         w: 16, h: 2, phiStart: Math.PI * 0.5 - 0.55, phiLength: 1.1, thetaStart: th, thetaLength: 0.045,
       }),
       mats.riderGlow, head, ['Head'],
     );
   }
-  add(ellipsoid([0, 0.19, 0.1], [0.045, 0.016, 0.05], helmetPaint, { w: 20, h: 10 }), shell, head, ['Head']);
+  add(ellipsoid([0, 0.192, 0.105], [0.058, 0.017, 0.072], helmetPaint, { w: 20, h: 10 }), shell, head, ['Head']);
+  for (const sx of [-1, 1]) {
+    // top air vents
+    const vent = ellipsoid([0, 0, 0], [0.012, 0.006, 0.03], solid(COL.graphite), { w: 10, h: 6 });
+    vent.rotateX(0.35);
+    vent.translate(sx * 0.03, 0.235, -0.07);
+    add(vent, shell, head, ['Head']);
+  }
 
   // ------------------------------------------------------------------ merge by material
   const groups = new Map<THREE.Material, THREE.BufferGeometry[]>();

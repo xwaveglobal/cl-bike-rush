@@ -4,6 +4,14 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 
 ---
 
+## 2026-10-25 (tối) — Hero 3D bản chi tiết (branch `feat/hero-3d`)
+
+**Done**: `BikeBody.ts` thêm chi tiết cơ khí (máy lộ sau ốp, 4 cổ pô, ống xả vát cạnh, đĩa khoan lỗ, heo dầu, nhông có răng, xích ôm nhông, lốp gân, phuộc sau lò xo, két nước, hốc đèn pha + DRL, xi-nhan gương, ốp trong đen; ốp sườn thu ngắn để lộ máy như ảnh mẫu). `RiderHuman.ts` thêm giáp nhiều lớp + mũ thon có khe gió. ~68k tam giác. Typecheck: không thêm lỗi.
+
+**Next**: skin đổi màu thật; LOD cho máy yếu; cân nhắc .glb nếu cần đúng 100% ảnh mẫu.
+
+---
+
 ## 2026-10-25 — Hero 3D: người lái liền khối, thân xe theo ảnh mẫu, cạnh gấp (branch `feat/hero-3d`)
 
 **Done**:

@@ -240,7 +240,7 @@ export function getLiveryTexture(): THREE.CanvasTexture {
       // s = z + (y - 0.5): steep slanted bands like the reference side panel
       const band = (s0: number, s1: number, y0: number, y1: number, fill: string, stroke?: string) =>
         poly(c, [[s0 - (y0 - 0.5), y0], [s1 - (y0 - 0.5), y0], [s1 - (y1 - 0.5), y1], [s0 - (y1 - 0.5), y1]], fill, stroke);
-      band(-0.12, 0.9, -0.2, 1.2, BLACK); // rear-lower black
+      band(-0.06, 0.9, -0.2, 1.2, BLACK); // rear edge black trim
       poly(c, [[-1, 0.0], [0.2, 0.0], [0.2, 0.33], [-1, 0.33]], BLACK); // bottom
       poly(c, [[-0.38 + 0.14, 0.36], [-0.24 + 0.14, 0.36], [-0.38 - 0.16, 0.66]], BLACK, LINE); // vent (triangle)
       band(-0.6, -0.46, 0.36, 0.77, BLUE, LINE); // main slash
@@ -293,6 +293,109 @@ class Parts {
   }
 }
 
+
+// ----------------------------------------------------------------------------------- detail helpers
+/** Flat part drawn as a 2D shape in the wheel plane (Y up, Z forward) and extruded along X. */
+function plate(shape: THREE.Shape, depth: number, x: number, segs = 32): THREE.BufferGeometry {
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: Math.min(segs, 1) });
+  g.translate(0, 0, -depth / 2);
+  g.rotateY(Math.PI / 2);
+  g.translate(x, 0, 0);
+  return g;
+}
+const circlePath = (r: number, cx = 0, cy = 0, n = 8) => {
+  const h = new THREE.Path();
+  for (let i = 0; i <= n; i++) {
+    const a = -(i / n) * Math.PI * 2;
+    if (i === 0) h.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    else h.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+  }
+  return h;
+};
+/** Wave/petal brake rotor with two rings of drilled holes and a floating carrier. */
+function rotorShape(r: number): THREE.Shape {
+  const s = new THREE.Shape();
+  const N = 12;
+  for (let i = 0; i <= N * 8; i++) {
+    const a = (i / (N * 8)) * Math.PI * 2;
+    const rr = r * (1 - 0.035 * (0.5 + 0.5 * Math.cos(a * N)));
+    if (i === 0) s.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    else s.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  s.holes.push(circlePath(r * 0.66, 0, 0, 48));
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2;
+    s.holes.push(circlePath(r * 0.028, Math.cos(a) * r * 0.86, Math.sin(a) * r * 0.86, 6));
+    const b = a + Math.PI / 18;
+    s.holes.push(circlePath(r * 0.026, Math.cos(b) * r * 0.76, Math.sin(b) * r * 0.76, 6));
+  }
+  return s;
+}
+function carrierShape(r: number, arms = 6): THREE.Shape {
+  const s = new THREE.Shape();
+  for (let i = 0; i <= 40; i++) {
+    const a = (i / 40) * Math.PI * 2;
+    if (i === 0) s.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+    else s.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  s.holes.push(circlePath(r * 0.38, 0, 0, 20));
+  for (let i = 0; i < arms; i++) {
+    const a = ((i + 0.5) / arms) * Math.PI * 2;
+    s.holes.push(circlePath(r * 0.22, Math.cos(a) * r * 0.68, Math.sin(a) * r * 0.68, 12));
+  }
+  return s;
+}
+function sprocketShape(r: number, teeth: number, holes: number): THREE.Shape {
+  const s = new THREE.Shape();
+  const n = teeth * 4;
+  for (let i = 0; i <= n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const k = i % 4;
+    const rr = k === 0 || k === 3 ? r * 0.94 : r;
+    if (i === 0) s.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    else s.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  s.holes.push(circlePath(r * 0.2, 0, 0, 16));
+  for (let i = 0; i < holes; i++) {
+    const a = (i / holes) * Math.PI * 2;
+    s.holes.push(circlePath(r * 0.2, Math.cos(a) * r * 0.58, Math.sin(a) * r * 0.58, 10));
+  }
+  return s;
+}
+let tyreTex: THREE.CanvasTexture | null = null;
+/** Tread + sidewall texture for the lathe tyre (u = around, v = across the profile). */
+function getTyreTexture(): THREE.CanvasTexture {
+  if (tyreTex) return tyreTex;
+  const cv = document.createElement('canvas');
+  cv.width = 2048;
+  cv.height = 256;
+  const g = cv.getContext('2d')!;
+  g.fillStyle = '#ffffff';
+  g.fillRect(0, 0, 2048, 256);
+  // sidewall bands (dark gloss ring + thin rim line)
+  g.fillStyle = '#d0d0d0';
+  g.fillRect(0, 0, 2048, 40);
+  g.fillRect(0, 216, 2048, 40);
+  g.fillStyle = '#9a9a9a';
+  g.fillRect(0, 10, 2048, 3);
+  g.fillRect(0, 243, 2048, 3);
+  // directional sport tread: swept grooves on the crown shoulders
+  g.strokeStyle = '#3c3c3c';
+  g.lineCap = 'round';
+  const N = 36;
+  for (let i = 0; i < N; i++) {
+    const x = (i / N) * 2048;
+    g.lineWidth = 7;
+    g.beginPath(); g.moveTo(x, 60); g.quadraticCurveTo(x + 20, 95, x + 52, 112); g.stroke();
+    g.beginPath(); g.moveTo(x + 28, 196); g.quadraticCurveTo(x + 48, 161, x + 80, 144); g.stroke();
+  }
+  tyreTex = new THREE.CanvasTexture(cv);
+  tyreTex.colorSpace = THREE.SRGBColorSpace;
+  tyreTex.wrapS = THREE.RepeatWrapping;
+  tyreTex.anisotropy = 8;
+  return tyreTex;
+}
+
 // ----------------------------------------------------------------------------------- wheels
 function buildWheel(R: number, W: number, rear: boolean, M: BikeRiderMaterials): THREE.Group {
   const g = new THREE.Group();
@@ -309,8 +412,13 @@ function buildWheel(R: number, W: number, rear: boolean, M: BikeRiderMaterials):
     prof.push(new THREE.Vector2(R - 0.066 * Math.pow(1 - Math.cos(a), 0.85), (W / 2) * Math.sin(a)));
   }
   prof.push(new THREE.Vector2(R - 0.075, W * 0.4));
-  const tyre = new THREE.LatheGeometry(prof, 44);
+  const tyre = new THREE.LatheGeometry(prof, 64);
   tyre.rotateZ(-Math.PI / 2);
+  if (!M.bikeTyre.map) {
+    M.bikeTyre.map = getTyreTexture();
+    M.bikeTyre.color.setHex(0x26292f);
+    M.bikeTyre.needsUpdate = true;
+  }
   P.add(tyre, M.bikeTyre);
 
   // rim barrel + lips + cobalt stripe
@@ -354,21 +462,20 @@ function buildWheel(R: number, W: number, rear: boolean, M: BikeRiderMaterials):
   }
   // brake rotors (front: twin, rear: single right) + rear sprocket (left)
   const rotor = (x: number, r: number) => {
-    const d = new THREE.CylinderGeometry(r, r, 0.006, 48, 1, false);
-    d.rotateZ(Math.PI / 2);
-    d.translate(x, 0, 0);
-    P.add(d, M.bikeSteel);
-    const carrier = new THREE.CylinderGeometry(r * 0.46, r * 0.46, 0.01, 24);
-    carrier.rotateZ(Math.PI / 2);
-    carrier.translate(x, 0, 0);
-    P.add(carrier, M.bikeGloss);
+    P.add(plate(rotorShape(r), 0.005, x, 48), M.bikeSteel);
+    P.add(plate(carrierShape(r * 0.62, rear ? 5 : 6), 0.008, x + Math.sign(x) * 0.003), M.bikeGloss);
+    // floating-disc buttons
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      const b = new THREE.CylinderGeometry(0.0075, 0.0075, 0.011, 8);
+      b.rotateZ(Math.PI / 2);
+      b.translate(x, Math.sin(a) * r * 0.64, Math.cos(a) * r * 0.64);
+      P.add(b, M.bikeGold);
+    }
   };
   if (rear) {
     rotor(0.095, 0.11);
-    const spr = new THREE.CylinderGeometry(0.1, 0.1, 0.012, 40);
-    spr.rotateZ(Math.PI / 2);
-    spr.translate(-0.11, 0, 0);
-    P.add(spr, M.bikeGloss);
+    P.add(plate(sprocketShape(0.1, 42, 6), 0.008, -0.11, 8), M.bikeGloss);
   } else {
     rotor(-0.072, 0.155);
     rotor(0.072, 0.155);
@@ -477,15 +584,40 @@ export function buildSportBike(M: BikeRiderMaterials) {
       { z: -0.76, xc: 0.185, yb: 0.52, yt: 0.755, yc: 0.62, t: 0.03, b: 0.021 },
       { z: -0.62, xc: 0.2, yb: 0.4, yt: 0.765, yc: 0.56, t: 0.036, b: 0.029 },
       { z: -0.48, xc: 0.208, yb: 0.3, yt: 0.77, yc: 0.5, t: 0.038, b: 0.034 },
-      { z: -0.34, xc: 0.208, yb: 0.25, yt: 0.7, yc: 0.44, t: 0.038, b: 0.034 },
-      { z: -0.22, xc: 0.203, yb: 0.23, yt: 0.575, yc: 0.38, t: 0.036, b: 0.029 },
-      { z: -0.1, xc: 0.196, yb: 0.23, yt: 0.44, yc: 0.32, t: 0.032, b: 0.021 },
-      { z: 0.0, xc: 0.185, yb: 0.24, yt: 0.335, yc: 0.29, t: 0.022, b: 0.013 },
-      { z: 0.04, xc: 0.176, yb: 0.26, yt: 0.29, yc: 0.275, t: 0.008, b: 0.004 },
+      { z: -0.34, xc: 0.208, yb: 0.27, yt: 0.7, yc: 0.45, t: 0.038, b: 0.034 },
+      { z: -0.24, xc: 0.204, yb: 0.31, yt: 0.6, yc: 0.42, t: 0.034, b: 0.029 },
+      { z: -0.16, xc: 0.198, yb: 0.36, yt: 0.5, yc: 0.41, t: 0.026, b: 0.02 },
+      { z: -0.11, xc: 0.192, yb: 0.4, yt: 0.44, yc: 0.415, t: 0.012, b: 0.006 },
     ].map((k) => ({ ...k, xc: k.xc * sx }));
     P.add(setSideUV(facetShell(podKeys, podProfile, podPaint, 5, 3), 'pod'), paint);
 
-    // mirrors on the fairing
+    // black inner shroud between tank and side panel (reference: dark layer under the silver panel)
+    P.add(shell([
+      { z: -0.5, x: sx * 0.17, yb: 0.7, yt: 0.78, hwB: 0.008, hwM: 0.012, hwT: 0.008 },
+      { z: -0.42, x: sx * 0.178, yb: 0.62, yt: 0.84, hwB: 0.016, hwM: 0.02, hwT: 0.016, p: 3 },
+      { z: -0.26, x: sx * 0.175, yb: 0.5, yt: 0.82, hwB: 0.016, hwM: 0.02, hwT: 0.016, p: 3 },
+      { z: -0.12, x: sx * 0.165, yb: 0.52, yt: 0.76, hwB: 0.012, hwM: 0.016, hwT: 0.012 },
+      { z: -0.06, x: sx * 0.16, yb: 0.6, yt: 0.7, hwB: 0.006, hwM: 0.008, hwT: 0.006 },
+    ], solid(K.black), 14, 4), M.bikeGloss);
+    // headlight housing behind each cyan eye
+    {
+      const hb = new THREE.BoxGeometry(0.135, 0.048, 0.06);
+      hb.rotateZ(sx * 0.32);
+      hb.rotateY(sx * -0.62);
+      hb.translate(sx * 0.074, 0.737, -0.951);
+      P.add(hb, M.bikeGloss);
+      const drl = new THREE.BoxGeometry(0.06, 0.006, 0.07);
+      drl.rotateZ(sx * 0.32);
+      drl.rotateY(sx * -0.62);
+      drl.translate(sx * 0.085, 0.762, -0.952);
+      P.add(drl, M.riderGlow);
+    }
+    // mirrors on the fairing (+ indicator strip)
+    {
+      const ind = new THREE.BoxGeometry(0.045, 0.007, 0.008);
+      ind.translate(sx * 0.35, 0.935, -0.661);
+      P.add(ind, M.riderGlow);
+    }
     P.add(pipe([[sx * 0.235, 0.875, -0.665], [sx * 0.29, 0.915, -0.655], [sx * 0.31, 0.93, -0.645]], 0.007, 8, 6), M.bikeBlack);
     P.add(ellipsoid([sx * 0.335, 0.94, -0.635], [0.058, 0.03, 0.026], solid(K.black), { w: 18, h: 10 }), M.bikeGloss);
     P.add(ellipsoid([sx * 0.335, 0.94, -0.61], [0.05, 0.024, 0.004], solid(K.black), { w: 16, h: 8 }), M.mirror);
@@ -509,14 +641,81 @@ export function buildSportBike(M: BikeRiderMaterials) {
     { z: 0.15, yb: 0.3, yt: 0.46, hwB: 0.06, hwM: 0.07, hwT: 0.05 },
   ], solid(K.grey), 18, 3), M.bikeBlack);
   for (const sx of [-1, 1]) {
-    const cov = new THREE.CylinderGeometry(0.085, 0.09, 0.03, 32);
+    // clutch (right) / alternator (left) covers: dished cover + ring + bolt circle
+    const cov = new THREE.CylinderGeometry(0.08, 0.09, 0.03, 40);
     cov.rotateZ(Math.PI / 2);
     cov.translate(sx * 0.165, 0.34, -0.02);
-    P.add(cov, M.bikeAlu);
+    P.add(cov, M.bikeGloss);
+    const ring = new THREE.TorusGeometry(0.068, 0.006, 6, 40);
+    ring.rotateY(Math.PI / 2);
+    ring.translate(sx * 0.181, 0.34, -0.02);
+    P.add(ring, M.bikeAlu);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const bolt = new THREE.CylinderGeometry(0.0065, 0.0065, 0.01, 6);
+      bolt.rotateZ(Math.PI / 2);
+      bolt.translate(sx * 0.183, 0.34 + Math.sin(a) * 0.078, -0.02 + Math.cos(a) * 0.078);
+      P.add(bolt, M.bikeAlu);
+    }
     const cov2 = new THREE.CylinderGeometry(0.05, 0.055, 0.025, 24);
     cov2.rotateZ(Math.PI / 2);
     cov2.translate(sx * 0.155, 0.27, -0.2);
     P.add(cov2, M.bikeGloss);
+  }
+  // cylinder block cooling fins
+  for (let i = 0; i < 7; i++) {
+    const fin = new THREE.BoxGeometry(0.29 - i * 0.004, 0.006, 0.17);
+    fin.rotateX(0.35);
+    fin.translate(0, 0.47 + i * 0.022, -0.27 + i * 0.006);
+    P.add(fin, M.bikeAlu);
+  }
+  // cam cover
+  P.add(shell([
+    { z: -0.34, yb: 0.62, yt: 0.64, hwB: 0.1, hwM: 0.12, hwT: 0.1 },
+    { z: -0.3, yb: 0.62, yt: 0.67, hwB: 0.13, hwM: 0.14, hwT: 0.12, p: 3 },
+    { z: -0.16, yb: 0.6, yt: 0.66, hwB: 0.13, hwM: 0.14, hwT: 0.12, p: 3 },
+    { z: -0.12, yb: 0.6, yt: 0.63, hwB: 0.1, hwM: 0.11, hwT: 0.09 },
+  ], solid(K.black), 16, 2), M.bikeGloss);
+  // oil filter + radiator behind the front wheel
+  const filt = new THREE.CylinderGeometry(0.035, 0.035, 0.07, 18);
+  filt.rotateX(Math.PI / 2 - 0.4);
+  filt.translate(0.06, 0.24, -0.33);
+  P.add(filt, M.bikeBlue);
+  {
+    const rad = new THREE.BoxGeometry(0.34, 0.3, 0.035);
+    rad.rotateX(-0.2);
+    rad.translate(0, 0.53, -0.42);
+    P.add(rad, M.bikeBlack);
+    for (let i = 0; i < 9; i++) {
+      const slat = new THREE.BoxGeometry(0.33, 0.006, 0.012);
+      slat.rotateX(-0.2);
+      slat.translate(0, 0.41 + i * 0.03, -0.443 + i * 0.006);
+      P.add(slat, M.bikeGloss);
+    }
+  }
+  // front sprocket + cover
+  P.add(plate(sprocketShape(0.045, 16, 0), 0.008, -0.115, 8).translate(0, 0.36, 0.07), M.bikeGloss);
+  P.add(shell([
+    { z: 0.0, x: -0.13, yb: 0.32, yt: 0.4, hwB: 0.008, hwM: 0.012, hwT: 0.008 },
+    { z: 0.05, x: -0.13, yb: 0.3, yt: 0.43, hwB: 0.012, hwM: 0.016, hwT: 0.012, p: 3 },
+    { z: 0.12, x: -0.13, yb: 0.32, yt: 0.42, hwB: 0.008, hwM: 0.012, hwT: 0.008 },
+  ], solid(K.black), 12, 3), M.bikeGloss);
+  // rear monoshock: red spring around a gold body (visible under the seat)
+  {
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i <= 120; i++) {
+      const t = i / 120, a = t * Math.PI * 2 * 7;
+      pts.push(new THREE.Vector3(Math.cos(a) * 0.03, t * 0.17, Math.sin(a) * 0.03));
+    }
+    const spring = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 110, 0.006, 5, false);
+    const body = new THREE.CylinderGeometry(0.018, 0.018, 0.22, 12);
+    body.translate(0, 0.09, 0);
+    for (const g of [spring, body]) {
+      g.rotateX(-0.75);
+      g.translate(0, 0.46, 0.08);
+    }
+    P.add(spring, M.bikeRed);
+    P.add(body, M.bikeGold);
   }
 
   // aluminium twin-spar frame
@@ -605,16 +804,39 @@ export function buildSportBike(M: BikeRiderMaterials) {
     { z: 0.82, yb: 0.7, yt: 0.82, hwB: 0.04, hwM: 0.05, hwT: 0.04 },
   ], solid(K.black), 20, 3), M.bikeBlack);
 
-  // exhaust: header under the engine + short right-side silencer
-  P.add(pipe([[0.03, 0.22, -0.34], [0.07, 0.165, -0.12], [0.13, 0.2, 0.1], [0.17, 0.29, 0.22]], 0.026, 24, 10), M.bikeChrome);
-  P.add(loft([
-    { c: [0.17, 0.28, 0.19], ru: 0.03, rv: 0.035 },
-    { c: [0.18, 0.31, 0.25], ru: 0.05, rv: 0.065 },
-    { c: [0.198, 0.37, 0.38], ru: 0.056, rv: 0.072 },
-    { c: [0.208, 0.405, 0.465], ru: 0.05, rv: 0.064 },
-    { c: [0.21, 0.412, 0.49], ru: 0.03, rv: 0.04 },
-  ], solid(K.silverDark), 20, 4), M.bikeChrome);
-  P.add(ellipsoid([0.21, 0.412, 0.49], [0.03, 0.04, 0.012], solid(K.black), { w: 16, h: 8 }), M.bikeBlack);
+  // exhaust: four headers out of the cylinder head, collector under the engine, faceted silencer
+  for (const [i, hx] of [-0.09, -0.03, 0.03, 0.09].entries()) {
+    P.add(pipe([
+      [hx, 0.5, -0.36],
+      [hx * 1.05, 0.42, -0.43],
+      [hx * 0.8, 0.27, -0.42],
+      [0.02 + hx * 0.4, 0.19 + i * 0.004, -0.3],
+      [0.06, 0.165, -0.14],
+    ], 0.016, 28, 10), M.bikeChrome);
+  }
+  P.add(pipe([[0.06, 0.165, -0.15], [0.11, 0.18, 0.04], [0.16, 0.26, 0.2]], 0.026, 20, 12), M.bikeChrome);
+  const canProfile = (k: Record<string, number>): [number, number][] => [
+    [k.cx + k.w, k.cy], [k.cx + k.w * 0.7, k.cy + k.h], [k.cx - k.w * 0.7, k.cy + k.h],
+    [k.cx - k.w, k.cy], [k.cx - k.w * 0.7, k.cy - k.h], [k.cx + k.w * 0.7, k.cy - k.h],
+  ];
+  P.add(facetShell([
+    { z: 0.19, cx: 0.17, cy: 0.285, w: 0.03, h: 0.03 },
+    { z: 0.25, cx: 0.18, cy: 0.315, w: 0.052, h: 0.06 },
+    { z: 0.38, cx: 0.197, cy: 0.37, w: 0.058, h: 0.07 },
+    { z: 0.465, cx: 0.207, cy: 0.405, w: 0.054, h: 0.064 },
+    { z: 0.49, cx: 0.21, cy: 0.412, w: 0.048, h: 0.056 },
+  ], canProfile, solid(K.silverDark), 4, 2, 0.4), M.bikeChrome);
+  // carbon end cap + twin outlets
+  P.add(facetShell([
+    { z: 0.488, cx: 0.21, cy: 0.412, w: 0.05, h: 0.058 },
+    { z: 0.52, cx: 0.212, cy: 0.42, w: 0.044, h: 0.05 },
+  ], canProfile, solid(K.black), 2, 2, 0.4), M.bikeGloss);
+  for (const oy of [-0.016, 0.016]) {
+    const o = new THREE.CylinderGeometry(0.012, 0.012, 0.03, 12);
+    o.rotateX(Math.PI / 2);
+    o.translate(0.212, 0.42 + oy, 0.525);
+    P.add(o, M.bikeChrome);
+  }
 
   // rearsets: hanger plates, pegs, levers
   for (const sx of [-1, 1]) {
@@ -630,8 +852,26 @@ export function buildSportBike(M: BikeRiderMaterials) {
   }
 
   // chain (left side)
-  P.add(pipe([[-0.115, 0.405, 0.07], [-0.115, 0.43, 0.71]], 0.006, 2, 6), M.bikeGloss);
-  P.add(pipe([[-0.115, 0.315, 0.07], [-0.115, 0.232, 0.71]], 0.006, 2, 6), M.bikeGloss);
+  {
+    const pts: V3[] = [];
+    const arc = (cz: number, cy: number, r: number, a0: number, a1: number, n: number) => {
+      for (let i = 0; i <= n; i++) {
+        const a = a0 + ((a1 - a0) * i) / n;
+        pts.push([-0.115, cy + Math.sin(a) * r, cz + Math.cos(a) * r]);
+      }
+    };
+    arc(0.71, 0.33, 0.102, Math.PI * 0.53, -Math.PI * 0.55, 14); // rear sprocket (top → back → bottom)
+    arc(0.07, 0.36, 0.047, -Math.PI * 0.45, -Math.PI * 1.47, 8); // front sprocket
+    const chain = pipe(pts, 0.0065, 110, 5, true);
+    P.add(chain, M.bikeGloss);
+    // chain guard over the top run
+    P.add(shell([
+      { z: 0.32, x: -0.115, yb: 0.43, yt: 0.44, hwB: 0.015, hwM: 0.02, hwT: 0.015 },
+      { z: 0.4, x: -0.115, yb: 0.43, yt: 0.452, hwB: 0.02, hwM: 0.025, hwT: 0.02, p: 3 },
+      { z: 0.62, x: -0.115, yb: 0.445, yt: 0.465, hwB: 0.02, hwM: 0.025, hwT: 0.02, p: 3 },
+      { z: 0.68, x: -0.115, yb: 0.45, yt: 0.46, hwB: 0.015, hwM: 0.02, hwT: 0.015 },
+    ], solid(K.black), 12, 3), M.bikeBlack);
+  }
 
   P.into(chassisGroup, 'Bike');
 
@@ -647,6 +887,20 @@ export function buildSportBike(M: BikeRiderMaterials) {
       { c: [sx * 0.16, 0.33, 0.745], ru: 0.012, rv: 0.02 },
     ], solid(K.silver), 14, 4), M.bikeAlu);
   }
+  for (const sx of [-1, 1]) {
+    const adj = new THREE.BoxGeometry(0.03, 0.05, 0.06);
+    adj.translate(sx * 0.165, 0.335, 0.715);
+    P.add(adj, M.bikeGloss);
+    const nut = new THREE.CylinderGeometry(0.02, 0.02, 0.012, 6);
+    nut.rotateZ(Math.PI / 2);
+    nut.translate(sx * 0.184, 0.33, 0.71);
+    P.add(nut, M.bikeGold);
+  }
+  P.add(loft([
+    { c: [0.15, 0.395, 0.22], ru: 0.012, rv: 0.016 },
+    { c: [0.156, 0.335, 0.4], ru: 0.014, rv: 0.02 },
+    { c: [0.158, 0.36, 0.56], ru: 0.012, rv: 0.016 },
+  ], solid(K.silver), 10, 3), M.bikeAlu);
   const cross = new THREE.CylinderGeometry(0.03, 0.03, 0.3, 12);
   cross.rotateZ(Math.PI / 2);
   cross.translate(0, 0.44, 0.15);
@@ -666,10 +920,11 @@ export function buildSportBike(M: BikeRiderMaterials) {
     P.add(pipe([[sx * 0.1, 0.06, 0.02], [sx * 0.2, 0.055, 0.06], [sx * 0.24, 0.058, 0.08]], 0.011, 10, 8), M.bikeGloss);
     P.add(pipe([[sx * 0.235, 0.058, 0.078], [sx * 0.3, 0.06, 0.1]], 0.017, 2, 10), M.bikeBlack);
     // radial caliper behind the disc
-    const cal = new THREE.BoxGeometry(0.026, 0.1, 0.045);
+    const cal = ellipsoid([0, 0, 0], [0.019, 0.058, 0.026], solid(K.silver), { w: 14, h: 10 });
     cal.rotateX(-0.75);
-    cal.translate(sx * 0.072, -0.33, -0.1);
+    cal.translate(sx * 0.074, -0.33, -0.1);
     P.add(cal, M.bikeGold);
+    P.add(pipe([[sx * 0.085, -0.29, -0.065], [sx * 0.13, -0.12, -0.02], [sx * 0.13, 0.02, 0.04], [sx * 0.2, 0.07, 0.07]], 0.004, 16, 5), M.bikeGloss);
   }
   const clamp = new THREE.BoxGeometry(0.26, 0.022, 0.07);
   clamp.translate(0, 0.085, 0.03);
