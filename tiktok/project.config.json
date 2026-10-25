@@ -1,0 +1,9 @@
+{
+  "appid": "7698594517263403028",
+  "projectname": "sky-roadster",
+  "description": "Sky Roadster \u2014 native TikTok mini game (v3).",
+  "setting": {
+    "es6": true,
+    "minified": true
+  }
+}
