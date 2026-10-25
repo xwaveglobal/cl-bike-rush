@@ -220,9 +220,9 @@ export class Vehicle {
     // 0, 1: front/rear left; 2, 3: front/rear right / exhaust
     const anchorPositions: [number, number, number][] = [
       [-0.14, 0.34, 0.56],  // left rear tail / swingarm
-      [0.18, 0.38, 0.54],   // right-side short exhaust tip (+X)
-      [-0.12, 0.58, 0.90],  // left angular cyan taillight
-      [0.12, 0.58, 0.90],   // right angular cyan taillight
+      [0.21, 0.412, 0.5],   // right-side short silencer tip (+X) — BikeBody.ts
+      [-0.04, 0.928, 0.88], // left angular cyan tail light (V) — BikeBody.ts
+      [0.04, 0.928, 0.88],  // right angular cyan tail light (V) — BikeBody.ts
     ];
     for (const [ax, ay, az] of anchorPositions) {
       const a = new THREE.Object3D();
