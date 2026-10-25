@@ -1,0 +1,150 @@
+<title>Xe chính Bike Rush</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one-screen showroom — 3D stage fills the left, control rail on the right; stacks on phones. Single dark look by choice. */
+:root {
+  --ink: #070b18;        /* night sky behind the bike */
+  --panel: #0e1426;
+  --line: #1f2a44;
+  --fg: #e6ecfa;
+  --muted: #8a97b6;
+  --cyan: #4fe3ff;       /* taillight cyan from the asset */
+  --cobalt: #3d6bff;     /* rider suit cobalt */
+  --f-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Be Vietnam Pro", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--ink); color: var(--fg); font-family: var(--f-body); font-size: 14px; }
+.app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+#stage { position: relative; min-height: 0; overflow: hidden; }
+#stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hud {
+  position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); top: 16px;
+  display: flex; flex-direction: column; gap: 4px; pointer-events: none;
+}
+.hud .eyebrow { font: 500 11px/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--cyan); }
+.hud h1 { margin: 0; font: 700 26px/1.1 var(--f-display); letter-spacing: .02em; text-wrap: balance; }
+.pose-chip {
+  position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); bottom: 16px;
+  font: 500 12px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase;
+  padding: 8px 12px; border: 1px solid rgba(79,227,255,.45); color: var(--cyan);
+  background: rgba(7,11,24,.7); border-radius: 2px; pointer-events: none;
+}
+.hint { position: absolute; right: 16px; bottom: 18px; font-size: 12px; color: var(--muted); pointer-events: none; }
+#loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font: 500 13px var(--f-mono); }
+
+aside {
+  background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto;
+  padding-block: 20px; padding-left: 20px; padding-right: max(20px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 22px;
+}
+section { display: flex; flex-direction: column; gap: 10px; }
+h2 { margin: 0; font: 500 11px/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+button {
+  font: 500 13px/1.2 var(--f-body); color: var(--fg); background: transparent;
+  border: 1px solid var(--line); border-radius: 3px; padding: 9px 10px; text-align: left; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+button:hover { border-color: #3a4a72; }
+button[aria-pressed="true"] { border-color: var(--cyan); background: rgba(79,227,255,.1); color: #fff; }
+button:focus-visible, input:focus-visible + span { outline: 2px solid var(--cyan); outline-offset: 2px; }
+#demo { text-align: center; font-family: var(--f-display); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; border-color: var(--cobalt); }
+#demo[aria-pressed="true"] { background: var(--cobalt); border-color: var(--cobalt); }
+label.tg { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; padding: 4px 0; }
+label.tg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+label.tg span { width: 34px; height: 18px; border-radius: 9px; background: var(--line); position: relative; flex: none; transition: background .15s; }
+label.tg span::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
+label.tg input:checked + span { background: rgba(79,227,255,.35); }
+label.tg input:checked + span::after { transform: translateX(16px); background: var(--cyan); }
+dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; }
+dt { color: var(--muted); }
+dd { margin: 0; font: 500 13px var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.note { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.55; }
+code { font: 500 12px var(--f-mono); color: var(--fg); }
+
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 58% minmax(0, 1fr); }
+  aside { border-left: 0; border-top: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 18px; }
+  .hud h1 { font-size: 20px; }
+  .hint { display: none; }
+  .grid.views { grid-template-columns: 1fr 1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <div id="stage">
+    <div id="loading">Đang dựng mô hình…</div>
+    <div class="hud">
+      <span class="eyebrow">Bike Rush · vật thể chính</span>
+      <h1>Xe + người lái 3D</h1>
+    </div>
+    <div class="pose-chip" id="pose-now">Chạy thẳng</div>
+    <div class="hint">Kéo để xoay · cuộn để zoom</div>
+  </div>
+
+  <aside>
+    <section>
+      <button id="demo" type="button" aria-pressed="true">Dừng demo</button>
+    </section>
+
+    <section>
+      <h2>Tư thế</h2>
+      <div class="grid">
+        <button type="button" data-pose="StraightRide" aria-pressed="true">Chạy thẳng</button>
+        <button type="button" data-pose="LowTuck">Cúi thấp</button>
+        <button type="button" data-pose="LeanLeft">Nghiêng trái</button>
+        <button type="button" data-pose="LeanRight">Nghiêng phải</button>
+        <button type="button" data-pose="AirborneJump">Bay nhảy</button>
+        <button type="button" data-pose="DownSlide">Trượt thấp</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Góc camera</h2>
+      <div class="grid views">
+        <button type="button" data-view="game" aria-pressed="true">Camera game</button>
+        <button type="button" data-view="rear">Sau, gần</button>
+        <button type="button" data-view="three">3/4 trước</button>
+        <button type="button" data-view="front">Chính diện</button>
+        <button type="button" data-view="left">Ngang trái</button>
+        <button type="button" data-view="right">Ngang phải</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Hiển thị</h2>
+      <label class="tg" for="o-run">Đường chạy + quay bánh<input id="o-run" type="checkbox" checked><span></span></label>
+      <label class="tg" for="o-rotate">Tự xoay quanh xe<input id="o-rotate" type="checkbox"><span></span></label>
+      <label class="tg" for="o-wire">Khung lưới (wireframe)<input id="o-wire" type="checkbox"><span></span></label>
+    </section>
+
+    <section>
+      <h2>Thông số mô hình</h2>
+      <dl>
+        <dt>Tam giác</dt><dd id="st-tris">–</dd>
+        <dt>Mesh</dt><dd id="st-mesh">–</dd>
+        <dt>Xương người lái</dt><dd id="st-bones">–</dd>
+        <dt>Vật liệu</dt><dd id="st-mats">–</dd>
+      </dl>
+      <p class="note">Thân xe dựng lại theo ảnh tham chiếu (<code>BikeBody.ts</code>): bề mặt cong liền, lớp sơn bạc/đen/xanh vẽ dạng texture. Người lái <code>RiderHuman.ts</code> phối màu theo ảnh. Khung xương, trục bánh và tư thế giữ nguyên như game.</p>
+    </section>
+  </aside>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+/*__BUNDLE__*/
+</script>

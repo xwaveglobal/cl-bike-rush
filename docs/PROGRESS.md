@@ -4,6 +4,21 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 
 ---
 
+## 2026-10-25 — Hero 3D: người lái liền khối, thân xe theo ảnh mẫu, cạnh gấp (branch `feat/hero-3d`)
+
+**Done**:
+- `src/render/RiderHuman.ts` (mới): người lái liền khối, da uốn mềm qua khớp, phối màu theo ảnh mẫu; khung xương 18 xương + IK giữ nguyên.
+- `src/render/BikeBody.ts` (mới): xe supersport theo `docs/hero-3d/reference-sheet.jpg` — ốp có cạnh gấp (polygon section + creased normals), livery canvas atlas chiếu ngang, phuộc vàng, 2 đĩa trước, vành 5 chấu chữ Y viền xanh, ống xả ngắn bên phải, đuôi vút với đèn hậu chữ V.
+- `src/render/BikeRiderAsset.ts`: vật liệu mới, gọi BikeBody + RiderHuman (bản cũ giữ lại dạng export), tư thế rạp hơn, cổ/đầu tự cân → LowTuck/DownSlide không còn chìm đầu.
+- `src/render/Vehicle.ts`: dời điểm phát hiệu ứng (đèn hậu, ống xả) theo thân xe mới.
+- `tools/hero-viewer/` + `builds/hero-viewer.html`: trang xem 3D; `docs/HERO-3D.md` + ảnh so sánh `docs/hero-3d/`.
+
+**Unfinished**: màu xe trong garage chưa đổi màu mô hình; chi tiết ốp/máy/mũ còn kém ảnh mẫu.
+
+**Next**: skin đổi màu thật; thêm tầng gấp ốp + chi tiết máy; tối ưu tam giác (~47k).
+
+---
+
 ## 2026-10-24 — SKY BIKE RUN Complete Visual Production Package (`v7.0`)
 
 **Done**:
