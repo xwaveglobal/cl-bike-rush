@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { buildHumanRider } from './RiderHuman.ts';
+import { buildSportBike } from './BikeBody.ts';
 
 export type BikePoseName =
   | 'StraightRide'
@@ -46,6 +48,27 @@ export interface BikeRiderMaterials {
   mirror: THREE.MeshPhysicalMaterial;
   cyanGlow: THREE.MeshStandardMaterial;
   redGlow: THREE.MeshStandardMaterial;
+  /** organic rider: vertex-painted leathers */
+  riderSuit: THREE.MeshPhysicalMaterial;
+  /** organic rider: pearl helmet shell + aero hump */
+  riderHelmet: THREE.MeshPhysicalMaterial;
+  /** organic rider: titanium sliders (shoulders, knees, knuckles, toes) */
+  riderArmor: THREE.MeshPhysicalMaterial;
+  /** organic rider: helmet light strips */
+  riderGlow: THREE.MeshStandardMaterial;
+  // ---- sport bike body (reference livery)
+  bikePaint: THREE.MeshPhysicalMaterial;
+  bikeSeat: THREE.MeshStandardMaterial;
+  bikeBlack: THREE.MeshStandardMaterial;
+  bikeGloss: THREE.MeshPhysicalMaterial;
+  bikeAlu: THREE.MeshStandardMaterial;
+  bikeChrome: THREE.MeshStandardMaterial;
+  bikeGold: THREE.MeshStandardMaterial;
+  bikeTyre: THREE.MeshStandardMaterial;
+  bikeSteel: THREE.MeshStandardMaterial;
+  bikeBlue: THREE.MeshPhysicalMaterial;
+  bikeRed: THREE.MeshStandardMaterial;
+  bikeScreen: THREE.MeshPhysicalMaterial;
 }
 
 export interface BikeRiderRig {
@@ -677,7 +700,8 @@ function buildWheelAssembly(
  * twin angular cyan tail lights, small red center light, right-side exhaust, swingarm, chain,
  * engine, front forks, handlebars, mirrors, and wheels).
  */
-function buildMotorcycleChassis(mats: BikeRiderMaterials) {
+/** Legacy futuristic chassis, kept for reference. */
+export function buildMotorcycleChassis(mats: BikeRiderMaterials) {
   const chassisGroup = new THREE.Group();
   chassisGroup.name = 'ChassisGroup';
 
@@ -1254,7 +1278,8 @@ function buildMotorcycleChassis(mats: BikeRiderMaterials) {
  * where rigid armor plates (segmented silver Y-spine protector, helmet, shoulder/elbow/hip/knee/shin armor)
  * are 100% single-bone weighted so they NEVER deform like rubber, while suit joints blend smoothly.
  */
-function buildRiderSkinnedMesh(mats: BikeRiderMaterials) {
+/** Legacy segmented (robot-style) rider, kept for reference. */
+export function buildRiderSkinnedMesh(mats: BikeRiderMaterials) {
   const bones: Record<string, THREE.Bone> = {};
   const makeBone = (name: string, parent: THREE.Bone | null, x: number, y: number, z: number) => {
     const b = new THREE.Bone();
@@ -2015,26 +2040,29 @@ export function applyBikeRiderPose(rig: {
   const pelvisX =
     lean * 0.055 * (1 - downSlide) + -slideSide * 0.065 * downSlide;
   const pelvisY =
-    0.79 + air * 0.048 - lowTuck * 0.045 - downSlide * 0.045;
+    0.79 + air * 0.048 + lowTuck * 0.012 - downSlide * 0.05;
   const pelvisZ =
-    0.22 + lowTuck * 0.065 + downSlide * 0.03 - air * 0.02;
+    0.22 + lowTuck * 0.06 + downSlide * 0.02 - air * 0.02;
 
   b.Pelvis.position.set(pelvisX, pelvisY, pelvisZ);
   // Forward pelvis tilt: ~0.34 rad in normal riding, ~0.88 rad in DownSlide
-  const pelvisPitch = -0.34 - lowTuck * 0.36 - downSlide * 0.22 - air * 0.08 + breathe;
+  const pelvisPitch = -0.44 - lowTuck * 0.09 - downSlide * 0.08 - air * 0.08 + breathe;
   const pelvisRoll = -lean * 0.10 * (1 - downSlide) + slideSide * 0.12 * downSlide;
   const pelvisYaw = -lean * 0.08 * (1 - downSlide) - slideSide * 0.06 * downSlide;
   b.Pelvis.rotation.set(pelvisPitch, pelvisYaw, pelvisRoll);
 
   // Spine segments flex forward in LowTuck & DownSlide so chest presses flat against the fuel tank
-  const spineFlex = -0.15 - lowTuck * 0.25 - downSlide * 0.14;
+  const spineFlex = -0.2 - lowTuck * 0.05 - downSlide * 0.04;
   const spineLeanRoll = -lean * 0.06 * (1 - downSlide) + slideSide * 0.06 * downSlide;
   b.Spine_1.rotation.set(spineFlex, 0, spineLeanRoll);
   b.Spine_2.rotation.set(spineFlex * 1.05, 0, spineLeanRoll);
   b.Chest.rotation.set(spineFlex * 0.95 - breathe, -lean * 0.05, spineLeanRoll);
 
   // Neck & Head counter-pitch upward so the helmet stays tucked right behind the windscreen looking down the road!
-  const neckPitch = 0.50 + lowTuck * 0.58 + downSlide * 0.26 + air * 0.06;
+  // Auto-level the helmet: neck + head cancel the whole torso pitch so the rider always looks down the road
+  // (chin just above the tank in LowTuck instead of the head folding into the bodywork).
+  const torsoPitch = pelvisPitch + spineFlex * 3.0;
+  const neckPitch = Math.max(0.35, (-torsoPitch - 0.12) / 1.07) + air * 0.04;
   b.Neck.rotation.set(neckPitch * 0.55, 0, 0);
   const headCounterRoll = lean * 0.16 * (1 - downSlide) - slideSide * 0.14 * downSlide;
   b.Head.rotation.set(neckPitch * 0.52, -lean * 0.08, headCounterRoll);
@@ -2380,9 +2408,60 @@ export function createBikeRiderMaterials(textures?: BikeRiderPBRTextures | numbe
     metalness: 0.08,
   });
 
+  const riderSuit = new THREE.MeshPhysicalMaterial({
+    name: 'Mat_Rider_Leather',
+    vertexColors: true,
+    roughness: 0.55,
+    metalness: 0.0,
+    clearcoat: 0.18,
+    clearcoatRoughness: 0.45,
+  });
+  const riderHelmet = new THREE.MeshPhysicalMaterial({
+    name: 'Mat_Rider_HelmetPearl',
+    vertexColors: true,
+    roughness: 0.22,
+    metalness: 0.08,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.05,
+  });
+  const riderArmor = new THREE.MeshPhysicalMaterial({
+    name: 'Mat_Rider_Titanium',
+    vertexColors: true,
+    roughness: 0.28,
+    metalness: 0.75,
+    clearcoat: 0.7,
+    clearcoatRoughness: 0.1,
+  });
+  const riderGlow = new THREE.MeshStandardMaterial({
+    name: 'Mat_Rider_CyanGlow',
+    color: 0x12e0ff,
+    emissive: new THREE.Color(0x0ad4ff),
+    emissiveIntensity: 1.6,
+    roughness: 0.2,
+    metalness: 0.0,
+  });
+
+  const bikePaint = new THREE.MeshPhysicalMaterial({ name: 'Mat_Bike_Paint', vertexColors: true, roughness: 0.3, metalness: 0.45, clearcoat: 1.0, clearcoatRoughness: 0.06 });
+  const bikeSeat = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_Seat', color: 0x15171b, roughness: 0.78, metalness: 0.0 });
+  const bikeBlack = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_MattePlastic', color: 0x1a1d22, roughness: 0.62, metalness: 0.15 });
+  const bikeGloss = new THREE.MeshPhysicalMaterial({ name: 'Mat_Bike_GlossBlack', color: 0x0d0f13, roughness: 0.32, metalness: 0.6, clearcoat: 0.8, clearcoatRoughness: 0.1 });
+  const bikeAlu = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_Aluminium', color: 0xb6bcc6, roughness: 0.34, metalness: 0.92 });
+  const bikeChrome = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_Exhaust', color: 0xc9ced6, roughness: 0.22, metalness: 1.0 });
+  const bikeGold = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_Gold', color: 0xd9a441, roughness: 0.28, metalness: 1.0 });
+  const bikeTyre = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_Tyre', color: 0x17191d, roughness: 0.88, metalness: 0.0 });
+  const bikeSteel = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_Rotor', color: 0xa9afb8, roughness: 0.38, metalness: 0.95 });
+  const bikeBlue = new THREE.MeshPhysicalMaterial({ name: 'Mat_Bike_RimBlue', color: 0x1d56f2, roughness: 0.3, metalness: 0.4, clearcoat: 1.0 });
+  const bikeRed = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_BrakeLight', color: 0xff2238, emissive: new THREE.Color(0xff1a30), emissiveIntensity: 1.6, roughness: 0.3 });
+  const bikeScreen = new THREE.MeshPhysicalMaterial({ name: 'Mat_Bike_Screen', color: 0x1a2230, roughness: 0.05, metalness: 0.2, clearcoat: 1.0, transparent: true, opacity: 0.72, side: THREE.DoubleSide });
+
   return {
     textures: tex,
     materials: {
+      bikePaint, bikeSeat, bikeBlack, bikeGloss, bikeAlu, bikeChrome, bikeGold, bikeTyre, bikeSteel, bikeBlue, bikeRed, bikeScreen,
+      riderSuit,
+      riderHelmet,
+      riderArmor,
+      riderGlow,
       suit,
       armorSilver,
       cobalt,
@@ -2424,10 +2503,10 @@ export function buildBikeRiderAsset(customTextures?: BikeRiderPBRTextures | numb
   pitchPivot.add(chassisOffset);
 
   const { chassisGroup, steeringPivot, frontWheelSpin, rearWheelSpin, swingarmGroup } =
-    buildMotorcycleChassis(materials);
+    buildSportBike(materials);
   chassisOffset.add(chassisGroup);
 
-  const { riderMesh, skeleton, bones, pelvis } = buildRiderSkinnedMesh(materials);
+  const { riderMesh, skeleton, bones, pelvis } = buildHumanRider(materials);
   chassisOffset.add(pelvis);
   chassisOffset.add(riderMesh);
 
