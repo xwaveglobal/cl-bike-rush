@@ -1,0 +1,40 @@
+{
+  "name": "xwave-flying-run",
+  "private": true,
+  "version": "7.0.0",
+  "description": "Sky Roadster — 3D endless runner: native TikTok mini game + web build (Three.js + TypeScript)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xwaveglobal/g-bike-rush.git"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 3000",
+    "build": "tsc --noEmit && vite build",
+    "build:single": "tsc --noEmit && vite build --mode single",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "test:fairness": "node --experimental-transform-types --no-warnings tests/fairness.test.ts",
+    "test:difficulty": "node --experimental-transform-types --no-warnings tests/difficulty.test.ts",
+    "test": "npm run test:fairness && npm run test:difficulty && npm run test:air && npm run test:exp && npm run test:phases && npm run test:bonus && npm run test:perks && npm run test:server",
+    "test:air": "node --experimental-transform-types --no-warnings tests/airlane.test.ts",
+    "test:exp": "node --experimental-transform-types --no-warnings tests/exp.test.ts",
+    "test:phases": "node --experimental-transform-types --no-warnings tests/phases.test.ts",
+    "test:bonus": "node --experimental-transform-types --no-warnings tests/bonus.test.ts",
+    "test:server": "node --experimental-transform-types --no-warnings tests/server.test.ts",
+    "build:tiktok": "node scripts/build-tiktok.mjs",
+    "check:tiktok": "node scripts/tiktok-tools.mjs check",
+    "preview:tiktok": "node hs-sdk/web/hs-web.mjs preview tiktok",
+    "pack:tiktok": "node scripts/tiktok-tools.mjs pack",
+    "test:perks": "node --experimental-transform-types --no-warnings tests/perks.test.ts"
+  },
+  "dependencies": {
+    "three": "0.169.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.169.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vite-plugin-singlefile": "^2.0.3"
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "iaa_config": {
+    "placements": [
+      {
+        "label": "rw_revive",
+        "ads": [
+          {
+            "id": "ad7698648409188239361"
+          }
+        ]
+      },
+      {
+        "label": "rw_end_bonus",
+        "ads": [
+          {
+            "id": "ad7698648440104470580"
+          }
+        ]
+      },
+      {
+        "label": "rw_free_coins",
+        "ads": [
+          {
+            "id": "ad7698650608001796097"
+          }
+        ]
+      },
+      {
+        "label": "rw_head_start",
+        "ads": [
+          {
+            "id": "ad7698658129030809601"
+          }
+        ]
+      },
+      {
+        "label": "int_race_end",
+        "ads": [
+          {
+            "id": "ad7698648500532201524"
+          }
+        ]
+      }
+    ],
+    "rewards": {
+      "share": {
+        "coins": 300,
+        "$limit": "daily"
+      },
+      "tiktok_profile": {
+        "coins": 300
+      },
+      "tiktok_shortcut": {
+        "coins": 300
+      }
+    },
+    "items": {
+      "coins": {
+        "category": "currency",
+        "name": "Coins"
+      },
+      "super": {
+        "category": "consumable",
+        "name": "Roadster Jump"
+      },
+      "hyper": {
+        "category": "consumable",
+        "name": "HYPER Jump"
+      },
+      "escape": {
+        "category": "consumable",
+        "name": "SOS Escape"
+      },
+      "no_ads": {
+        "category": "unlock",
+        "name": "No Ads"
+      }
+    }
+  },
+  "products": [
+    {
+      "id": 5,
+      "name": "Remove Ads",
+      "description": "No ad after a race ends — forever",
+      "beans_cost": 299,
+      "rewards": {
+        "no_ads": 1
+      },
+      "consumable": false,
+      "badge": "NO ADS"
+    },
+    {
+      "id": 1,
+      "name": "5,000 coins",
+      "description": "Starter pack",
+      "beans_cost": 99,
+      "rewards": {
+        "coins": 5000
+      },
+      "badge": "STARTER"
+    },
+    {
+      "id": 2,
+      "name": "16,000 coins",
+      "description": "+6% bonus",
+      "beans_cost": 299,
+      "rewards": {
+        "coins": 16000
+      }
+    },
+    {
+      "id": 3,
+      "name": "28,000 coins",
+      "description": "+11% bonus",
+      "beans_cost": 499,
+      "rewards": {
+        "coins": 28000
+      },
+      "badge": "POPULAR"
+    },
+    {
+      "id": 4,
+      "name": "60,000 coins",
+      "description": "+19% bonus",
+      "beans_cost": 999,
+      "rewards": {
+        "coins": 60000
+      }
+    },
+    {
+      "id": 6,
+      "name": "130,000 coins",
+      "description": "+29% bonus",
+      "beans_cost": 1999,
+      "rewards": {
+        "coins": 130000
+      },
+      "badge": "BEST VALUE"
+    }
+  ]
+}

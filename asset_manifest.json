@@ -1,0 +1,74 @@
+{
+  "project": "SKY BIKE RUN",
+  "tagline": "Ride Beyond Limits",
+  "version": "7.0",
+  "repository": "https://github.com/xwaveglobal/g-bike-rush",
+  "branding": {
+    "appIcon1024": "public/icons/icon-1024.png",
+    "appIcon512": "public/icons/icon-512.png",
+    "appIconMaskable512": "public/icons/icon-maskable-512.png",
+    "appIcon192": "public/icons/icon-192.png",
+    "appleTouchIcon180": "public/icons/apple-touch-icon.png",
+    "favicon32": "public/icons/favicon-32.png",
+    "inGameIconWeb": "src/assets/images/app-icon.webp",
+    "inGameIconNative": "src/native/img/app-icon.jpg",
+    "mainLogoWeb": "src/assets/images/sky-roadster-logo.webp",
+    "mainLogoNative": "src/native/img/sky-roadster-logo.png",
+    "loadingScreen9x16": "src/assets/images/loading.jpg"
+  },
+  "heroVehicle3D": {
+    "proceduralRigModule": "src/render/BikeRiderAsset.ts",
+    "vehicleControllerModule": "src/render/Vehicle.ts",
+    "rearRenderWeb": "src/assets/images/car/x1-back.webp",
+    "rearRenderNative": "src/native/img/car-x1-back.png",
+    "redForceRearRenderWeb": "src/assets/images/car/vega-back.webp",
+    "redForceRearRenderNative": "src/native/img/car-vega-back.png",
+    "animations": [
+      "idle",
+      "driving_straight",
+      "lane_change_left",
+      "lane_change_right",
+      "lean_left",
+      "lean_right",
+      "down_low_slide",
+      "aero_nitro_boost",
+      "jump_flight",
+      "air_dash_roll",
+      "landing_compress",
+      "crash_shatter",
+      "emergency_rescue_lift"
+    ]
+  },
+  "vehicleColorVariants": [
+    { "id": "zenith", "name": "Blue White", "rarity": "Common", "need": "D", "web": "src/assets/images/cars/zenith.webp", "native": "src/native/img/cars-zenith.jpg" },
+    { "id": "vega", "name": "Red Force", "rarity": "Rare", "need": "C", "web": "src/assets/images/cars/vega.webp", "native": "src/native/img/cars-vega.jpg" },
+    { "id": "volt", "name": "Purple Shadow", "rarity": "Rare", "need": "B", "web": "src/assets/images/cars/volt.webp", "native": "src/native/img/cars-volt.jpg" },
+    { "id": "phantom", "name": "Gold Legend", "rarity": "Epic", "need": "A", "web": "src/assets/images/cars/phantom.webp", "native": "src/native/img/cars-phantom.jpg" },
+    { "id": "inferno", "name": "Green Emerald", "rarity": "Legendary", "need": "AA", "web": "src/assets/images/cars/inferno.webp", "native": "src/native/img/cars-inferno.jpg" },
+    { "id": "nexus", "name": "Silver Frost", "rarity": "Mythic", "need": "AAA", "web": "src/assets/images/cars/nexus.webp", "native": "src/native/img/cars-nexus.jpg" },
+    { "id": "stealth", "name": "Black Stealth", "rarity": "Mythic", "need": "AAA", "web": "src/assets/images/cars/stealth.webp", "native": "src/native/img/cars-stealth.jpg" },
+    { "id": "blaze", "name": "Orange Blaze", "rarity": "Mythic", "need": "AAA", "web": "src/assets/images/cars/blaze.webp", "native": "src/native/img/cars-blaze.jpg" }
+  ],
+  "tracks": [
+    { "id": "future-city", "name": "Sky City", "world": "city", "thumbnail": "src/assets/images/tracks/future-city.jpg" },
+    { "id": "cloud-city", "name": "Cloud Highway", "world": "cloud", "thumbnail": "src/assets/images/tracks/cloud-city.jpg" },
+    { "id": "neon-tunnel", "name": "Neon Night City", "world": "tunnel", "thumbnail": "src/assets/images/tracks/neon-tunnel.jpg" },
+    { "id": "space-zone", "name": "Celestial Gateway", "world": "space", "thumbnail": "src/assets/images/tracks/space-zone.jpg" },
+    { "id": "mega-city", "name": "Sunset Horizon", "world": "mega", "thumbnail": "src/assets/images/tracks/mega-city.jpg" },
+    { "id": "future-city-1", "name": "Sky City · Floating Islands", "world": "city", "thumbnail": "src/assets/images/tracks/future-city.jpg" },
+    { "id": "cloud-city-1", "name": "Cloud Highway · Crystal Bridge", "world": "cloud", "thumbnail": "src/assets/images/tracks/cloud-city.jpg" },
+    { "id": "neon-tunnel-1", "name": "Neon Night City · Waterfall Canyon", "world": "tunnel", "thumbnail": "src/assets/images/tracks/neon-tunnel.jpg" },
+    { "id": "space-zone-1", "name": "Celestial Gateway · Storm Corridor", "world": "space", "thumbnail": "src/assets/images/tracks/space-zone.jpg" },
+    { "id": "mega-city-1", "name": "Sunset Horizon · Mountain Skyway", "world": "mega", "thumbnail": "src/assets/images/tracks/mega-city.jpg" }
+  ],
+  "itemsAndSpecials": [
+    { "key": "turbo", "name": "Aero Nitro", "type": "boost" },
+    { "key": "shield", "name": "Aegis Shield", "type": "boost" },
+    { "key": "magnet", "name": "Flux Magnet", "type": "boost" },
+    { "key": "double", "name": "Double Coin", "type": "boost" },
+    { "key": "life", "name": "Armor Core", "type": "boost" },
+    { "key": "super", "name": "Jump Booster", "type": "special" },
+    { "key": "hyper", "name": "HYPER FLIGHT", "type": "special" },
+    { "key": "escape", "name": "Emergency Rescue", "type": "special" }
+  ]
+}

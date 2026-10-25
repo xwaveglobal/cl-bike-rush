@@ -1,0 +1,18 @@
+node_modules
+dist
+dist-esbuild
+*.log
+.DS_Store
+.env
+.env.*
+.vscode/
+.idea/
+server/data.json
+
+# HS pack output (zip to upload)
+*-tiktok.zip
+*-android.zip
+
+# AI Studio & local lockfiles
+.aistudio/
+bun.lock
