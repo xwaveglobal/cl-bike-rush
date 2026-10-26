@@ -260,6 +260,14 @@ function frame(now: number) {
   fov: (deg: number) => { camera.fov = deg; camera.updateProjectionMatrix(); },
   rider: (on: boolean) => { rig.riderMesh.visible = on; },
   lod: (n: number) => useLod(n),
+  bone: (name: string) => {
+    const b = rig.bones[name];
+    b.updateWorldMatrix(true, false);
+    const p = new THREE.Vector3().setFromMatrixPosition(b.matrixWorld);
+    const f = new THREE.Vector3(0, 0, -1).transformDirection(b.matrixWorld);
+    const u = new THREE.Vector3(0, 1, 0).transformDirection(b.matrixWorld);
+    return { p: p.toArray(), fwd: f.toArray(), up: u.toArray() };
+  },
   view: (n: string) => { toggleDemo(false); setView(n, true); },
   cam: (p: [number, number, number], l: [number, number, number]) => { toggleDemo(false); camK = 1; camera.position.set(...p); controls.target.set(...l); controls.update(); },
   pose: (n: string) => { toggleDemo(false); setPose(n, false); Object.assign(cur, POSES[n]); },
