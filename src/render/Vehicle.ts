@@ -149,7 +149,8 @@ export class Vehicle {
     this.pitch.add(this.squashG);
 
     // Build complete 3D futuristic motorcycle and articulated rider
-    this.bikeRig = buildBikeRiderAsset(512);
+    // LOD 1 = gameplay detail (~41k tris); 0 = garage/close-up, 2 = low-end phones
+    this.bikeRig = buildBikeRiderAsset(512, 1);
     this.squashG.add(this.bikeRig.root);
 
     // Record original material properties for skin tinting and locked silhouette mode
@@ -220,9 +221,9 @@ export class Vehicle {
     // 0, 1: front/rear left; 2, 3: front/rear right / exhaust
     const anchorPositions: [number, number, number][] = [
       [-0.14, 0.34, 0.56],  // left rear tail / swingarm
-      [0.21, 0.412, 0.5],   // right-side short silencer tip (+X) — BikeBody.ts
-      [-0.04, 0.928, 0.88], // left angular cyan tail light (V) — BikeBody.ts
-      [0.04, 0.928, 0.88],  // right angular cyan tail light (V) — BikeBody.ts
+      [0.21, 0.52, 0.51],   // right-side round silencer outlet (+X) — BikeBody.ts
+      [-0.038, 0.97, 0.91], // left V tail lamp (rear face) — BikeBody.ts
+      [0.038, 0.97, 0.91],  // right V tail lamp (rear face) — BikeBody.ts
     ];
     for (const [ax, ay, az] of anchorPositions) {
       const a = new THREE.Object3D();

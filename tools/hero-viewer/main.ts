@@ -83,28 +83,41 @@ road.receiveShadow = true;
 scene.add(road);
 
 // ---------- the hero asset ----------
-const rig = buildBikeRiderAsset(512);
-rig.root.traverse((o) => {
-  const m = o as THREE.Mesh;
-  if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; }
-});
-scene.add(rig.root);
-
-// stats
-let tris = 0, meshes = 0;
-const mats = new Set<THREE.Material>();
-rig.root.traverse((o) => {
-  const m = o as THREE.Mesh;
-  if (!m.isMesh) return;
-  meshes++;
-  const g = m.geometry;
-  tris += (g.index ? g.index.count : g.attributes.position.count) / 3;
-  (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => mats.add(x));
-});
-$('st-tris').textContent = Math.round(tris).toLocaleString('vi-VN');
-$('st-mesh').textContent = String(meshes);
-$('st-bones').textContent = String(rig.skeleton.bones.length);
-$('st-mats').textContent = String(mats.size);
+// three detail levels (0 = garage/close, 1 = gameplay, 2 = low-end); built lazily and swapped in place
+const rigs: (ReturnType<typeof buildBikeRiderAsset> | undefined)[] = [];
+let rig: ReturnType<typeof buildBikeRiderAsset>;
+let mats = new Set<THREE.Material>();
+function useLod(level: number) {
+  if (!rigs[level]) {
+    const r = buildBikeRiderAsset(512, level);
+    r.root.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; }
+    });
+    rigs[level] = r;
+  }
+  if (rig) scene.remove(rig.root);
+  rig = rigs[level]!;
+  scene.add(rig.root);
+  let tris = 0, meshes = 0;
+  mats = new Set<THREE.Material>();
+  rig.root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    meshes++;
+    const g = m.geometry;
+    tris += (g.index ? g.index.count : g.attributes.position.count) / 3;
+    (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => mats.add(x));
+  });
+  $('st-tris').textContent = Math.round(tris).toLocaleString('vi-VN');
+  $('st-mesh').textContent = String(meshes);
+  $('st-bones').textContent = String(rig.skeleton.bones.length);
+  $('st-mats').textContent = String(mats.size);
+  mats.forEach((m) => { (m as THREE.MeshStandardMaterial).wireframe = (document.getElementById('o-wire') as HTMLInputElement | null)?.checked ?? false; });
+  document.querySelectorAll<HTMLButtonElement>('[data-lod]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.lod) === level)));
+}
+useLod(0);
+document.querySelectorAll<HTMLButtonElement>('[data-lod]').forEach((b) => b.addEventListener('click', () => useLod(Number(b.dataset.lod))));
 
 // ---------- poses ----------
 type P = Required<Pick<BikePoseParams, 'lean' | 'air' | 'downSlide' | 'lowTuck' | 'pitch'>>;
@@ -171,8 +184,7 @@ controls.addEventListener('start', () => {
 
 // ---------- toggles ----------
 const opt = (id: string) => $(id) as HTMLInputElement;
-const wireMats = [...mats] as THREE.MeshStandardMaterial[];
-opt('o-wire').addEventListener('change', () => wireMats.forEach((m) => { m.wireframe = opt('o-wire').checked; }));
+opt('o-wire').addEventListener('change', () => mats.forEach((m) => { (m as THREE.MeshStandardMaterial).wireframe = opt('o-wire').checked; }));
 opt('o-rotate').addEventListener('change', () => { controls.autoRotate = opt('o-rotate').checked; });
 controls.autoRotateSpeed = 1.4;
 
@@ -188,7 +200,7 @@ resize();
 
 // ---------- loop ----------
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-let wheel = 0, time = 0, last = performance.now();
+let wheel = 0, time = 0, last = performance.now(), lastRootY = 0;
 const poseLabel = $('pose-now');
 const LABELS: Record<string, string> = {
   StraightRide: 'Chạy thẳng', LeanLeft: 'Nghiêng trái', LeanRight: 'Nghiêng phải',
@@ -215,6 +227,12 @@ function frame(now: number) {
     roadTex.offset.y += dt * 1.6;
   }
   rig.root.position.y = cur.air * 0.95 + Math.sin(time * 3.2) * 0.03 * cur.air;
+  // keep the bike framed when it jumps: camera + orbit target follow the ride height
+  const dyFollow = rig.root.position.y - lastRootY;
+  lastRootY = rig.root.position.y;
+  camera.position.y += dyFollow;
+  controls.target.y += dyFollow;
+  if (camFrom && camTo) { camFrom.p.y += dyFollow; camFrom.l.y += dyFollow; camTo.p.y += dyFollow; camTo.l.y += dyFollow; }
   rig.applyPose({
     lean: cur.lean, air: cur.air, downSlide: cur.downSlide, lowTuck: cur.lowTuck,
     pitch: cur.pitch, wheelSpin: wheel, time: moving ? time : 0,
@@ -241,6 +259,7 @@ function frame(now: number) {
   },
   fov: (deg: number) => { camera.fov = deg; camera.updateProjectionMatrix(); },
   rider: (on: boolean) => { rig.riderMesh.visible = on; },
+  lod: (n: number) => useLod(n),
   view: (n: string) => { toggleDemo(false); setView(n, true); },
   cam: (p: [number, number, number], l: [number, number, number]) => { toggleDemo(false); camK = 1; camera.position.set(...p); controls.target.set(...l); controls.update(); },
   pose: (n: string) => { toggleDemo(false); setPose(n, false); Object.assign(cur, POSES[n]); },

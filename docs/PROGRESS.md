@@ -4,6 +4,16 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 
 ---
 
+## 2026-10-26 — Hero 3D theo master prompt (branch `feat/hero-3d`)
+
+**Done**: Thân xe dựng lại theo số đo trên ảnh mẫu (`BikeBody.ts`): mũi cao ngắn, kính cao, ốp nhiều tấm có độ dày (`sidePlate`), bình xăng có đệm gối, yên ~0.85 m, đuôi mảnh "mỏ vịt", đèn pha tam giác + DRL + hốc tối, đèn hậu chữ V + chấm đỏ, vành 10 chấu, heo đỏ, gắp hộp, chắn bùn sau, ống xả tròn bên phải, phuộc sau. `BIKE_ERGO` dùng chung cho IK (tay lái 0.925 m lùi sau, gác chân z 0.26, ngồi y 0.95). Người lái ngồi nghiêng ~50° như mẫu, mũ có cạnh + kính lớn. LOD 0/1/2 (60k/41k/29k), game dùng LOD 1. Viewer: nút LOD, camera theo xe khi nhảy, chế độ studio. Tài liệu + checklist: `docs/hero-3d/master/`.
+
+**Unfinished**: ốp còn ít tầng gấp hơn mẫu; giáp ngực/lưng mới vẽ màu; chưa có texture carbon.
+
+**Next**: skin đổi màu thật; kiểm tra trên điện thoại (TikTok build) với LOD 1.
+
+---
+
 ## 2026-10-25 (tối) — Hero 3D bản chi tiết (branch `feat/hero-3d`)
 
 **Done**: `BikeBody.ts` thêm chi tiết cơ khí (máy lộ sau ốp, 4 cổ pô, ống xả vát cạnh, đĩa khoan lỗ, heo dầu, nhông có răng, xích ôm nhông, lốp gân, phuộc sau lò xo, két nước, hốc đèn pha + DRL, xi-nhan gương, ốp trong đen; ốp sườn thu ngắn để lộ máy như ảnh mẫu). `RiderHuman.ts` thêm giáp nhiều lớp + mũ thon có khe gió. ~68k tam giác. Typecheck: không thêm lỗi.

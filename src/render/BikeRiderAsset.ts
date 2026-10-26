@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildHumanRider } from './RiderHuman.ts';
-import { buildSportBike } from './BikeBody.ts';
+import { buildSportBike, BIKE_ERGO } from './BikeBody.ts';
 
 export type BikePoseName =
   | 'StraightRide'
@@ -69,6 +69,8 @@ export interface BikeRiderMaterials {
   bikeBlue: THREE.MeshPhysicalMaterial;
   bikeRed: THREE.MeshStandardMaterial;
   bikeScreen: THREE.MeshPhysicalMaterial;
+  bikeLens: THREE.MeshStandardMaterial;
+  bikeCaliper: THREE.MeshPhysicalMaterial;
 }
 
 export interface BikeRiderRig {
@@ -2040,19 +2042,19 @@ export function applyBikeRiderPose(rig: {
   const pelvisX =
     lean * 0.055 * (1 - downSlide) + -slideSide * 0.065 * downSlide;
   const pelvisY =
-    0.79 + air * 0.048 + lowTuck * 0.012 - downSlide * 0.05;
+    BIKE_ERGO.pelvisY + air * 0.048 - lowTuck * 0.035 - downSlide * 0.06;
   const pelvisZ =
-    0.22 + lowTuck * 0.06 + downSlide * 0.02 - air * 0.02;
+    BIKE_ERGO.pelvisZ + lowTuck * 0.05 + downSlide * 0.02 - air * 0.02;
 
   b.Pelvis.position.set(pelvisX, pelvisY, pelvisZ);
   // Forward pelvis tilt: ~0.34 rad in normal riding, ~0.88 rad in DownSlide
-  const pelvisPitch = -0.44 - lowTuck * 0.09 - downSlide * 0.08 - air * 0.08 + breathe;
+  const pelvisPitch = -0.52 - lowTuck * 0.22 - downSlide * 0.1 - air * 0.08 + breathe;
   const pelvisRoll = -lean * 0.10 * (1 - downSlide) + slideSide * 0.12 * downSlide;
   const pelvisYaw = -lean * 0.08 * (1 - downSlide) - slideSide * 0.06 * downSlide;
   b.Pelvis.rotation.set(pelvisPitch, pelvisYaw, pelvisRoll);
 
   // Spine segments flex forward in LowTuck & DownSlide so chest presses flat against the fuel tank
-  const spineFlex = -0.2 - lowTuck * 0.05 - downSlide * 0.04;
+  const spineFlex = -0.2 - lowTuck * 0.08 - downSlide * 0.05;
   const spineLeanRoll = -lean * 0.06 * (1 - downSlide) + slideSide * 0.06 * downSlide;
   b.Spine_1.rotation.set(spineFlex, 0, spineLeanRoll);
   b.Spine_2.rotation.set(spineFlex * 1.05, 0, spineLeanRoll);
@@ -2074,19 +2076,19 @@ export function applyBikeRiderPose(rig: {
   // 6. Analytical 2-Bone IK for Arms -> Handlebar Grips (Hands stay attached to handlebars in banked chassis frame!)
   const cosS = Math.cos(steerYaw);
   const sinS = Math.sin(steerYaw);
-  const gripLocalZ = 0.085;
-  const gripLocalX = 0.265;
+  const gripLocalZ = BIKE_ERGO.gripLocalZ;
+  const gripLocalX = BIKE_ERGO.gripX;
   _gripTargetL
     .set(
       -gripLocalX * cosS + gripLocalZ * sinS,
-      0.80,
+      BIKE_ERGO.gripY,
       -0.52 + gripLocalX * sinS + gripLocalZ * cosS,
     )
     .applyMatrix4(chassisMatWorld);
   _gripTargetR
     .set(
       gripLocalX * cosS + gripLocalZ * sinS,
-      0.80,
+      BIKE_ERGO.gripY,
       -0.52 - gripLocalX * sinS + gripLocalZ * cosS,
     )
     .applyMatrix4(chassisMatWorld);
@@ -2122,8 +2124,8 @@ export function applyBikeRiderPose(rig: {
   );
 
   // 7. Analytical 2-Bone IK for Legs -> Footpegs (Feet remain on footpegs in banked chassis frame!)
-  _pegTargetL.set(-0.215, 0.445, 0.16).applyMatrix4(chassisMatWorld);
-  _pegTargetR.set(0.215, 0.445, 0.16).applyMatrix4(chassisMatWorld);
+  _pegTargetL.set(-BIKE_ERGO.pegX, BIKE_ERGO.pegY, BIKE_ERGO.pegZ).applyMatrix4(chassisMatWorld);
+  _pegTargetR.set(BIKE_ERGO.pegX, BIKE_ERGO.pegY, BIKE_ERGO.pegZ).applyMatrix4(chassisMatWorld);
 
   // Knee pole vectors in chassis frame, transformed to world direction
   const openLeftKnee = Math.max(0, -lean) * 0.38 * (1 - downSlide);
@@ -2441,7 +2443,7 @@ export function createBikeRiderMaterials(textures?: BikeRiderPBRTextures | numbe
     metalness: 0.0,
   });
 
-  const bikePaint = new THREE.MeshPhysicalMaterial({ name: 'Mat_Bike_Paint', vertexColors: true, roughness: 0.3, metalness: 0.45, clearcoat: 1.0, clearcoatRoughness: 0.06 });
+  const bikePaint = new THREE.MeshPhysicalMaterial({ name: 'Mat_Bike_Paint', vertexColors: true, roughness: 0.32, metalness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.12, iridescence: 0.18, iridescenceIOR: 1.4 });
   const bikeSeat = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_Seat', color: 0x15171b, roughness: 0.78, metalness: 0.0 });
   const bikeBlack = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_MattePlastic', color: 0x1a1d22, roughness: 0.62, metalness: 0.15 });
   const bikeGloss = new THREE.MeshPhysicalMaterial({ name: 'Mat_Bike_GlossBlack', color: 0x0d0f13, roughness: 0.32, metalness: 0.6, clearcoat: 0.8, clearcoatRoughness: 0.1 });
@@ -2452,11 +2454,15 @@ export function createBikeRiderMaterials(textures?: BikeRiderPBRTextures | numbe
   const bikeSteel = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_Rotor', color: 0xa9afb8, roughness: 0.38, metalness: 0.95 });
   const bikeBlue = new THREE.MeshPhysicalMaterial({ name: 'Mat_Bike_RimBlue', color: 0x1d56f2, roughness: 0.3, metalness: 0.4, clearcoat: 1.0 });
   const bikeRed = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_BrakeLight', color: 0xff2238, emissive: new THREE.Color(0xff1a30), emissiveIntensity: 1.6, roughness: 0.3 });
-  const bikeScreen = new THREE.MeshPhysicalMaterial({ name: 'Mat_Bike_Screen', color: 0x1a2230, roughness: 0.05, metalness: 0.2, clearcoat: 1.0, transparent: true, opacity: 0.72, side: THREE.DoubleSide });
+  const bikeScreen = new THREE.MeshPhysicalMaterial({ name: 'Mat_Bike_Screen', color: 0x2a3444, roughness: 0.04, metalness: 0.0, clearcoat: 1.0, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
+
+  const bikeLens = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_LampLens', color: 0x1aa7c4, emissive: new THREE.Color(0x19d2ff), emissiveIntensity: 1.5, roughness: 0.15, metalness: 0.1 });
+  const bikeCaliper = new THREE.MeshPhysicalMaterial({ name: 'Mat_Bike_Caliper', color: 0xb3121f, roughness: 0.32, metalness: 0.45, clearcoat: 0.8 });
 
   return {
     textures: tex,
     materials: {
+      bikeLens, bikeCaliper,
       bikePaint, bikeSeat, bikeBlack, bikeGloss, bikeAlu, bikeChrome, bikeGold, bikeTyre, bikeSteel, bikeBlue, bikeRed, bikeScreen,
       riderSuit,
       riderHelmet,
@@ -2479,7 +2485,10 @@ export function createBikeRiderMaterials(textures?: BikeRiderPBRTextures | numbe
 /**
  * Builds the complete hierarchical 3D Futuristic Motorcycle & Rider asset.
  */
-export function buildBikeRiderAsset(customTextures?: BikeRiderPBRTextures | number): BikeRiderRig {
+/**
+ * @param lod 0 = full detail (garage / close camera), 1 = gameplay, 2 = low-end phones
+ */
+export function buildBikeRiderAsset(customTextures?: BikeRiderPBRTextures | number, lod = 0): BikeRiderRig {
   const { materials, textures } = createBikeRiderMaterials(customTextures);
 
   const root = new THREE.Group();
@@ -2503,10 +2512,10 @@ export function buildBikeRiderAsset(customTextures?: BikeRiderPBRTextures | numb
   pitchPivot.add(chassisOffset);
 
   const { chassisGroup, steeringPivot, frontWheelSpin, rearWheelSpin, swingarmGroup } =
-    buildSportBike(materials);
+    buildSportBike(materials, lod);
   chassisOffset.add(chassisGroup);
 
-  const { riderMesh, skeleton, bones, pelvis } = buildHumanRider(materials);
+  const { riderMesh, skeleton, bones, pelvis } = buildHumanRider(materials, lod);
   chassisOffset.add(pelvis);
   chassisOffset.add(riderMesh);
 

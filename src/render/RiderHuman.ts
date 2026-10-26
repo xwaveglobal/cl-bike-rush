@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { BikeRiderMaterials } from './BikeRiderAsset.ts';
 
 /**
@@ -39,15 +39,21 @@ const COL = {
   cobalt: C(0x1f5cff),
   cobaltDeep: C(0x1440c4),
   pearl: C(0xe9edf4),
+  visor: C(0x07090d),
   silverPiping: C(0xb9c2d2),
   black: C(0x0d0f14),
 };
+
+export /** detail scale for radial/segment counts (set per build from the LOD level) */
+let LOD_SCALE = 1;
 
 export const catmull = (p0: number, p1: number, p2: number, p3: number, t: number) =>
   0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
 
 /** Smooth loft through key sections (Catmull-Rom on centres and radii). */
 export function loft(keys: Sec[], paint: Painter, radial = 22, sub = 4, uAxis: V3 = [1, 0, 0]): THREE.BufferGeometry {
+  radial = Math.max(6, Math.round(radial * LOD_SCALE));
+  sub = Math.max(2, Math.round(sub * Math.min(1, LOD_SCALE + 0.2)));
   // ---- resample keys
   type S = { c: THREE.Vector3; ru: number; ruN: number; rv: number; rvN: number; p: number };
   const K = keys.map((k) => ({
@@ -147,7 +153,7 @@ export function ellipsoid(
   c: V3, r: V3, paint: Painter,
   o: { w?: number; h?: number; phiStart?: number; phiLength?: number; thetaStart?: number; thetaLength?: number } = {},
 ): THREE.BufferGeometry {
-  const g = new THREE.SphereGeometry(1, o.w ?? 28, o.h ?? 18, o.phiStart, o.phiLength, o.thetaStart, o.thetaLength);
+  const g = new THREE.SphereGeometry(1, Math.max(6, Math.round((o.w ?? 28) * LOD_SCALE)), Math.max(2, Math.round((o.h ?? 18) * LOD_SCALE)), o.phiStart, o.phiLength, o.thetaStart, o.thetaLength);
   g.scale(r[0], r[1], r[2]);
   g.translate(c[0], c[1], c[2]);
   g.computeVertexNormals();
@@ -174,7 +180,8 @@ export const solid = (c: THREE.Color): Painter => () => c;
 export const mix = (a: THREE.Color, b: THREE.Color, k: number) => a.clone().lerp(b, Math.max(0, Math.min(1, k)));
 export const band = (x: number, edge: number, soft = 0.08) => Math.max(0, Math.min(1, (x - edge) / soft + 0.5));
 
-export function buildHumanRider(mats: BikeRiderMaterials) {
+export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
+  LOD_SCALE = lod === 0 ? 1 : lod === 1 ? 0.7 : 0.5;
   // ------------------------------------------------------------------ skeleton (identical to the original)
   const bones: Record<string, THREE.Bone> = {};
   const makeBone = (name: string, parent: THREE.Bone | null, x: number, y: number, z: number) => {
@@ -452,63 +459,47 @@ export function buildHumanRider(mats: BikeRiderMaterials) {
       mats.riderArmor, foot, [`Foot_${sfx}`]);
   }
 
-  // ---- HELMET (Head local: +Y up, -Z forward). Rounded shell, wrap-around visor, cobalt centre stripe.
+  // ---- HELMET (Head local: +Y up, -Z forward). Angular shell like the reference: 10-sided sections with
+  // creased normals; the big dark visor and the silver/blue graphics are painted onto the shell.
   const hc: V3 = [0, 0.115, -0.015];
-  // reference helmet: gloss black, silver side blade, cobalt pin line, silver crown stripe
   const helmetPaint: Painter = (p, n) => {
-    const ly = p.y - hc[1], lz = p.z - hc[2];
-    if (Math.abs(n.x) > 0.5 && ly > -0.035 && ly < 0.03 && lz > -0.06) return COL.silver;
-    if (Math.abs(n.x) > 0.5 && ly >= 0.03 && ly < 0.048 && lz > -0.03) return COL.cobalt;
-    if (Math.abs(p.x) < 0.014 && ly > 0.03 && lz > -0.09) return COL.silver;
+    const ly = p.y - hc[1], lz = p.z - hc[2], ax = Math.abs(p.x);
+    if (lz < -0.04 && ly > -0.05 && ly < 0.052 && n.z < -0.1) return COL.visor; // wrap-around visor
+    if (ax < 0.028 && ly > 0.052) return lz < 0.1 ? COL.silver : COL.black; // crown panel
+    if (ax >= 0.028 && ax < 0.04 && ly > 0.052 && lz < 0.07) return COL.cobalt; // crown accent lines
+    if (Math.abs(n.x) > 0.55 && ly > -0.02 && ly < 0.05 && lz > -0.03) return COL.silver; // side blade
+    if (Math.abs(n.x) > 0.55 && ly >= 0.05 && ly < 0.066 && lz > -0.01) return COL.cobalt;
     return COL.black;
   };
-  const shellGeo = ellipsoid(hc, [0.116, 0.124, 0.168], helmetPaint, { w: 30, h: 20 });
   {
-    // chin bar: push the lower front forward a little, tuck the lower back in
-    const p = shellGeo.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < p.count; i++) {
-      const y = p.getY(i) - hc[1], z = p.getZ(i) - hc[2];
-      if (y < 0) {
-        const k = Math.min(1, -y / 0.128);
-        p.setZ(i, hc[2] + z * (z < 0 ? 1 + 0.1 * k : 1 - 0.12 * k));
-      }
-    }
-    shellGeo.computeVertexNormals();
+    const hg = loft([
+      { c: [0, 0.06, -0.188], ru: 0.03, rv: 0.02, rvN: 0.02 },
+      { c: [0, 0.075, -0.168], ru: 0.075, rv: 0.05, rvN: 0.062 },
+      { c: [0, 0.105, -0.13], ru: 0.105, rv: 0.086, rvN: 0.1 },
+      { c: [0, 0.115, -0.06], ru: 0.119, rv: 0.11, rvN: 0.124 },
+      { c: [0, 0.12, 0.03], ru: 0.121, rv: 0.105, rvN: 0.128 },
+      { c: [0, 0.126, 0.11], ru: 0.107, rv: 0.09, rvN: 0.114 },
+      { c: [0, 0.135, 0.16], ru: 0.074, rv: 0.06, rvN: 0.078 },
+      { c: [0, 0.14, 0.186], ru: 0.024, rv: 0.02, rvN: 0.024 },
+    ], helmetPaint, 10, 2);
+    const g = toCreasedNormals(hg, 0.42);
+    g.setIndex([...Array(g.attributes.position.count).keys()]);
+    add(g, shell, head, ['Head']);
   }
-  add(shellGeo, shell, head, ['Head']);
-  // chin bar bulge + twin cyan brow lights (reference helmet front)
-  add(ellipsoid([0, 0.04, -0.118], [0.088, 0.052, 0.062], solid(COL.black), { w: 20, h: 12 }), shell, head, ['Head']);
+  // cyan forehead light bar + rear light bar, small rear spoiler, top vents
+  for (const [y, z, rx, w] of [[0.18, -0.143, 0.62, 0.06], [0.172, 0.158, -0.6, 0.064]]) {
+    const bar = new THREE.BoxGeometry(w, 0.011, 0.012);
+    bar.rotateX(rx);
+    bar.translate(0, y, z);
+    bar.computeVertexNormals();
+    paintGeo(bar, solid(COL.cobalt));
+    add(bar, mats.riderGlow, head, ['Head']);
+  }
+  add(ellipsoid([0, 0.236, 0.12], [0.05, 0.012, 0.055], solid(COL.black), { w: 16, h: 8 }), shell, head, ['Head']);
   for (const sx of [-1, 1]) {
-    const brow = new THREE.BoxGeometry(0.036, 0.008, 0.012);
-    brow.rotateZ(sx * 0.35);
-    brow.rotateY(sx * -0.5);
-    brow.translate(sx * 0.04, 0.2, -0.128);
-    brow.computeVertexNormals();
-    paintGeo(brow, solid(COL.cobalt));
-    add(brow, mats.riderGlow, head, ['Head']);
-  }
-  // visor: front band of a slightly larger sphere (SphereGeometry: phi = 3π/2 faces -Z)
-  add(
-    ellipsoid([hc[0], hc[1], hc[2] - 0.004], [0.119, 0.127, 0.173], solid(COL.black), {
-      w: 32, h: 12, phiStart: Math.PI * 1.5 - 1.0, phiLength: 2.0, thetaStart: 1.02, thetaLength: 0.7,
-    }),
-    mats.visor, head, ['Head'],
-  );
-  // rear cyan light strips + small aero spoiler
-  for (const th of [1.2, 1.33]) {
-    add(
-      ellipsoid(hc, [0.1175, 0.1255, 0.1695], solid(COL.pearl), {
-        w: 16, h: 2, phiStart: Math.PI * 0.5 - 0.55, phiLength: 1.1, thetaStart: th, thetaLength: 0.045,
-      }),
-      mats.riderGlow, head, ['Head'],
-    );
-  }
-  add(ellipsoid([0, 0.192, 0.105], [0.058, 0.017, 0.072], helmetPaint, { w: 20, h: 10 }), shell, head, ['Head']);
-  for (const sx of [-1, 1]) {
-    // top air vents
     const vent = ellipsoid([0, 0, 0], [0.012, 0.006, 0.03], solid(COL.graphite), { w: 10, h: 6 });
     vent.rotateX(0.35);
-    vent.translate(sx * 0.03, 0.235, -0.07);
+    vent.translate(sx * 0.03, 0.238, -0.06);
     add(vent, shell, head, ['Head']);
   }
 
@@ -534,5 +525,6 @@ export function buildHumanRider(mats: BikeRiderMaterials) {
   riderMesh.name = 'Rider_SkinnedMesh';
   riderMesh.frustumCulled = false;
   riderMesh.bind(skeleton, new THREE.Matrix4());
+  LOD_SCALE = 1;
   return { riderMesh, skeleton, bones, pelvis };
 }
