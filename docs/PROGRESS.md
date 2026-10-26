@@ -4,6 +4,14 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 
 ---
 
+## 2026-10-26 (chiều) — Người lái bớt cứng (branch `feat/hero-3d`)
+
+**Done**: `RiderHuman.ts`: mũ thu 88% và hạ sát vai, hông/mông/đùi thon lại, lưng trên tròn + cổ/vai đầy hơn, giáp ép dẹt thành tấm (bỏ "quả cầu"), giảm độ bóng giáp, lưới thân dày hơn để mảng màu sắc nét; phối màu: tay áo đen, chữ V bạc hẹp sau lưng. `BikeRiderAsset.ts`: khuỷu tay mở ra ngoài, ngồi nhích lên + rạp thêm cho khuỷu gập; chuyển động phụ (thở, rung theo đường, đầu khẽ đảo nhìn đường, nghiêng người vào cua, đầu giữ ngang chân trời). Ảnh: `docs/hero-3d/master/rider-before-after.jpg`.
+
+**Next**: kiểm tra trên điện thoại; skin đổi màu thật.
+
+---
+
 ## 2026-10-26 — Hero 3D theo master prompt (branch `feat/hero-3d`)
 
 **Done**: Thân xe dựng lại theo số đo trên ảnh mẫu (`BikeBody.ts`): mũi cao ngắn, kính cao, ốp nhiều tấm có độ dày (`sidePlate`), bình xăng có đệm gối, yên ~0.85 m, đuôi mảnh "mỏ vịt", đèn pha tam giác + DRL + hốc tối, đèn hậu chữ V + chấm đỏ, vành 10 chấu, heo đỏ, gắp hộp, chắn bùn sau, ống xả tròn bên phải, phuộc sau. `BIKE_ERGO` dùng chung cho IK (tay lái 0.925 m lùi sau, gác chân z 0.26, ngồi y 0.95). Người lái ngồi nghiêng ~50° như mẫu, mũ có cạnh + kính lớn. LOD 0/1/2 (60k/41k/29k), game dùng LOD 1. Viewer: nút LOD, camera theo xe khi nhảy, chế độ studio. Tài liệu + checklist: `docs/hero-3d/master/`.

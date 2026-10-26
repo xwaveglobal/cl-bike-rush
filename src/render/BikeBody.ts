@@ -446,7 +446,7 @@ export const BIKE_ERGO = {
   /** footpegs */
   pegX: 0.2, pegY: 0.44, pegZ: 0.26,
   /** pelvis rest position on the seat */
-  pelvisY: 0.95, pelvisZ: 0.3,
+  pelvisY: 0.95, pelvisZ: 0.28,
 };
 
 // ----------------------------------------------------------------------------------- wheels

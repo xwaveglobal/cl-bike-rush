@@ -2035,12 +2035,18 @@ export function applyBikeRiderPose(rig: {
 
   // 5. Rider Pelvis & Spine Posture (in Chassis space)
   const b = rig.bones;
-  const breathe = Math.sin(t * 3.2) * 0.008;
+  // Secondary motion so the rider never looks frozen: slow breathing, road buzz through the shoulders,
+  // small head glances down the road (all fade out in the air / slide where the body is braced).
+  const calm = (1 - air) * (1 - downSlide);
+  const breathe = Math.sin(t * 1.9) * 0.012 + Math.sin(t * 3.2) * 0.004;
+  const buzz = Math.sin(t * 11.3) * 0.004 * calm;
+  const glanceYaw = (Math.sin(t * 0.61) * 0.05 + Math.sin(t * 1.73) * 0.015) * calm;
+  const glancePitch = Math.sin(t * 1.07) * 0.02 * calm;
 
   // Pelvis shifts slightly inside the turn during LeanLeft/LeanRight, rises on pegs in AirborneJump,
   // and slides back/low in LowTuck / DownSlide so the chest lies flat against the fuel tank!
   const pelvisX =
-    lean * 0.055 * (1 - downSlide) + -slideSide * 0.065 * downSlide;
+    lean * 0.09 * (1 - downSlide) + -slideSide * 0.065 * downSlide;
   const pelvisY =
     BIKE_ERGO.pelvisY + air * 0.048 - lowTuck * 0.035 - downSlide * 0.06;
   const pelvisZ =
@@ -2048,14 +2054,15 @@ export function applyBikeRiderPose(rig: {
 
   b.Pelvis.position.set(pelvisX, pelvisY, pelvisZ);
   // Forward pelvis tilt: ~0.34 rad in normal riding, ~0.88 rad in DownSlide
-  const pelvisPitch = -0.52 - lowTuck * 0.22 - downSlide * 0.1 - air * 0.08 + breathe;
+  const pelvisPitch = -0.56 - lowTuck * 0.2 - downSlide * 0.1 - air * 0.08 + breathe;
   const pelvisRoll = -lean * 0.10 * (1 - downSlide) + slideSide * 0.12 * downSlide;
   const pelvisYaw = -lean * 0.08 * (1 - downSlide) - slideSide * 0.06 * downSlide;
   b.Pelvis.rotation.set(pelvisPitch, pelvisYaw, pelvisRoll);
 
   // Spine segments flex forward in LowTuck & DownSlide so chest presses flat against the fuel tank
-  const spineFlex = -0.2 - lowTuck * 0.08 - downSlide * 0.05;
-  const spineLeanRoll = -lean * 0.06 * (1 - downSlide) + slideSide * 0.06 * downSlide;
+  const spineFlex = -0.22 - lowTuck * 0.08 - downSlide * 0.05;
+  // hang off into the turn: the upper body leans further than the bike
+  const spineLeanRoll = -lean * 0.13 * (1 - downSlide) + slideSide * 0.06 * downSlide + buzz;
   b.Spine_1.rotation.set(spineFlex, 0, spineLeanRoll);
   b.Spine_2.rotation.set(spineFlex * 1.05, 0, spineLeanRoll);
   b.Chest.rotation.set(spineFlex * 0.95 - breathe, -lean * 0.05, spineLeanRoll);
@@ -2066,8 +2073,9 @@ export function applyBikeRiderPose(rig: {
   const torsoPitch = pelvisPitch + spineFlex * 3.0;
   const neckPitch = Math.max(0.35, (-torsoPitch - 0.12) / 1.07) + air * 0.04;
   b.Neck.rotation.set(neckPitch * 0.55, 0, 0);
-  const headCounterRoll = lean * 0.16 * (1 - downSlide) - slideSide * 0.14 * downSlide;
-  b.Head.rotation.set(neckPitch * 0.52, -lean * 0.08, headCounterRoll);
+  // keep the eyes level with the horizon while the bike banks
+  const headCounterRoll = lean * 0.38 * (1 - downSlide) - slideSide * 0.14 * downSlide;
+  b.Head.rotation.set(neckPitch * 0.52 + glancePitch, -lean * 0.12 + glanceYaw, headCounterRoll);
 
   // Update full world transform hierarchy from LeanPivot down through ChassisOffset and Spine before solving IK!
   rig.leanPivot.updateMatrixWorld(true);
@@ -2096,10 +2104,10 @@ export function applyBikeRiderPose(rig: {
   // Elbow pole vectors in chassis frame, transformed to world direction
   const elbowTuck = lowTuck * 0.45 + downSlide * 0.25;
   _poleL
-    .set(-0.75 + elbowTuck, -0.55 - elbowTuck * 0.6, 0.25)
+    .set(-0.9 + elbowTuck * 0.5, -0.12 - elbowTuck * 0.3, 0.32)
     .transformDirection(chassisMatWorld);
   _poleR
-    .set(0.75 - elbowTuck, -0.55 - elbowTuck * 0.6, 0.25)
+    .set(0.9 - elbowTuck * 0.5, -0.12 - elbowTuck * 0.3, 0.32)
     .transformDirection(chassisMatWorld);
 
   solveTwoBoneIK(
@@ -2429,10 +2437,10 @@ export function createBikeRiderMaterials(textures?: BikeRiderPBRTextures | numbe
   const riderArmor = new THREE.MeshPhysicalMaterial({
     name: 'Mat_Rider_Titanium',
     vertexColors: true,
-    roughness: 0.28,
-    metalness: 0.75,
-    clearcoat: 0.7,
-    clearcoatRoughness: 0.1,
+    roughness: 0.38,
+    metalness: 0.6,
+    clearcoat: 0.3,
+    clearcoatRoughness: 0.3,
   });
   const riderGlow = new THREE.MeshStandardMaterial({
     name: 'Mat_Rider_CyanGlow',

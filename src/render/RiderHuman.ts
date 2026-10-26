@@ -276,13 +276,13 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     // silver chest plate, cobalt side stripe and collar
     const backN = n.z * 0.9 + n.y * 0.3;
     const frontN = -n.z * 0.9 - n.y * 0.4;
-    const vEdge = 0.03 + (p.y - 0.96) * 0.85;
+    const vEdge = 0.024 + Math.max(0, p.y - 0.96) * 0.33; // narrow silver V like the reference
     const ax = Math.abs(p.x);
     let c = COL.graphite;
     if (backN > 0.1 && p.y > 0.96 && ax < vEdge) c = COL.silver;
-    else if (backN > 0.0 && p.y > 0.93 && ax >= vEdge && ax < vEdge + 0.055) c = COL.cobalt;
+    else if (backN > 0.0 && p.y > 0.98 && ax >= vEdge + 0.012 && ax < vEdge + 0.05) c = COL.cobalt;
     if (band(Math.abs(n.x), 0.95, 0.03) * (p.y > 0.86 && p.y < 1.14 ? 1 : 0) > 0.5) c = COL.cobalt;
-    if (frontN > 0.35 && p.y > 1.1) c = COL.silver;
+    if (frontN > 0.45 && p.y > 1.13 && ax < 0.12) c = COL.silver;
     if (p.y > 1.29 && p.y < 1.33) c = COL.cobalt;
     return c;
   };
@@ -290,25 +290,25 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     loft(
       [
         { c: [0, 0.69, 0.25], ru: 0.08, rv: 0.05, rvN: 0.05 },
-        { c: [0, 0.74, 0.24], ru: 0.158, rv: 0.11, rvN: 0.09, p: 2.3 },
-        { c: [0, 0.83, 0.21], ru: 0.163, rv: 0.105, rvN: 0.092, p: 2.3 },
+        { c: [0, 0.74, 0.24], ru: 0.136, rv: 0.076, rvN: 0.08, p: 2.2 },
+        { c: [0, 0.83, 0.21], ru: 0.142, rv: 0.08, rvN: 0.084, p: 2.2 },
         { c: [0, 0.93, 0.165], ru: 0.142, rv: 0.085, rvN: 0.084, p: 2.2 },
         { c: [0, 1.04, 0.11], ru: 0.156, rv: 0.09, rvN: 0.096, p: 2.2 },
-        { c: [0, 1.14, 0.06], ru: 0.178, rv: 0.098, rvN: 0.106, p: 2.3 },
-        { c: [0, 1.212, 0.035], ru: 0.2, rv: 0.092, rvN: 0.094, p: 2.6 },
-        { c: [0, 1.262, 0.02], ru: 0.158, rv: 0.074, rvN: 0.074, p: 2.4 },
-        { c: [0, 1.302, 0.008], ru: 0.07, rv: 0.06, rvN: 0.058 },
+        { c: [0, 1.14, 0.06], ru: 0.18, rv: 0.11, rvN: 0.104, p: 2.3 },
+        { c: [0, 1.212, 0.035], ru: 0.2, rv: 0.1, rvN: 0.092, p: 2.5 },
+        { c: [0, 1.262, 0.02], ru: 0.165, rv: 0.085, rvN: 0.074, p: 2.4 },
+        { c: [0, 1.302, 0.008], ru: 0.088, rv: 0.07, rvN: 0.062 },
         { c: [0, 1.37, -0.01], ru: 0.056, rv: 0.052, rvN: 0.05 },
         { c: [0, 1.41, -0.015], ru: 0.02, rv: 0.02 },
       ],
-      torsoPaint, 24, 3,
+      torsoPaint, 34, 5,
     ),
     suit, null, ['Pelvis', 'Spine_1', 'Spine_2', 'Chest', 'Neck', 'Head'], 5,
   );
 
   // ---- AERO HUMP (pearl, like a race suit's back protector), smooth not segmented
   add(
-    ellipsoid([0, 0.06, 0.07], [0.098, 0.11, 0.058], (p) =>
+    ellipsoid([0, 0.058, 0.066], [0.09, 0.1, 0.044], (p) =>
       mix(COL.silverHi, COL.graphite, band(0.016 - Math.abs(p.x), 0, 0.006)), { w: 22, h: 14 }),
     shell, chest, ['Spine_2', 'Chest', 'Neck'], 6,
   );
@@ -323,11 +323,9 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     const armPaint: Painter = (p, n) => {
       // top of the arm while riding = n.x * inSign > 0 (see IK frame)
       const top = n.x * inSign;
-      if (p.z > -0.06 && top > 0.2) return COL.silver; // shoulder cap
-      if (p.z > -0.19 && top > 0.62) return COL.silver; // upper-arm plate
-      if (p.z < -0.31 && p.z > -0.46 && top > 0.6) return COL.silver; // forearm guard
-      if (n.y > 0.8 && p.z < -0.05) return COL.cobalt; // outer stripe
-      if (p.z < -0.24 && p.z > -0.3 && top > 0.0) return COL.cobalt; // elbow band
+      if (p.z > -0.05 && top > 0.45) return COL.silver; // shoulder cap
+      if (p.z > -0.19 && p.z < -0.08 && top > 0.75) return COL.silver; // upper-arm plate
+      if (p.z < -0.32 && p.z > -0.45 && top > 0.72) return COL.silver; // forearm guard
       return COL.graphite;
     };
     add(
@@ -349,16 +347,14 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
       suit, upper, ['Chest', `UpperArm_${sfx}`, `Forearm_${sfx}`, `Hand_${sfx}`], 6,
     );
     // layered armour: second shoulder plate, upper-arm plate, three overlapping forearm plates
-    add(ellipsoid([sx * 0.01, 0.026, -0.085], [0.046, 0.024, 0.04], solid(COL.silverHi), { w: 18, h: 10 }),
-      mats.riderArmor, upper, [`UpperArm_${sfx}`]);
-    add(ellipsoid([inSign * 0.046, 0, -0.15], [0.012, 0.036, 0.055], solid(COL.silverHi), { w: 14, h: 10 }),
+    add(ellipsoid([inSign * 0.044, 0, -0.15], [0.007, 0.04, 0.06], solid(COL.silverHi), { w: 14, h: 10 }),
       mats.riderArmor, upper, [`UpperArm_${sfx}`]);
     for (const [k, z] of [-0.335, -0.385, -0.435].entries()) {
-      add(ellipsoid([inSign * (0.041 - k * 0.003), 0, z], [0.011, 0.031 - k * 0.003, 0.032], solid(k === 1 ? COL.cobalt : COL.silverHi), { w: 12, h: 8 }),
+      add(ellipsoid([inSign * (0.041 - k * 0.003), 0, z], [0.006, 0.033 - k * 0.003, 0.034], solid(k === 1 ? COL.cobalt : COL.silverHi), { w: 12, h: 8 }),
         mats.riderArmor, upper, [`Forearm_${sfx}`]);
     }
     // shoulder slider (titanium cap)
-    add(ellipsoid([sx * 0.012, 0.04, -0.035], [0.052, 0.03, 0.062], solid(COL.silverHi), { w: 22, h: 14 }),
+    add(ellipsoid([sx * 0.012, 0.036, -0.035], [0.058, 0.016, 0.068], solid(COL.silverHi), { w: 22, h: 14 }),
       mats.riderArmor, upper, [`UpperArm_${sfx}`]);
     // glove gauntlet over the wrist (Forearm local)
     add(
@@ -378,7 +374,7 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     // fist wrapped round the grip + knuckle guard
     add(ellipsoid([0, -0.004, -0.048], [0.046, 0.038, 0.064], solid(COL.black), { w: 22, h: 14 }),
       suit, hand, [`Hand_${sfx}`]);
-    add(ellipsoid([inSign * 0.03, 0.006, -0.055], [0.012, 0.03, 0.036], solid(COL.silverHi), { w: 14, h: 10 }),
+    add(ellipsoid([inSign * 0.03, 0.006, -0.055], [0.007, 0.03, 0.036], solid(COL.silverHi), { w: 14, h: 10 }),
       mats.riderArmor, hand, [`Hand_${sfx}`]);
   }
 
@@ -389,7 +385,7 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     // ---- LEG: hip → ankle in one piece (Thigh local, runs along -Z; +v becomes the knee front)
     const legPaint: Painter = (p, n) => {
       const out = n.x * sx;
-      if (p.z > -0.32 && p.z < -0.02 && out > 0.45) return COL.cobalt; // outer thigh panel
+      if (p.z > -0.3 && p.z < -0.04 && out > 0.72) return COL.cobalt; // outer thigh panel
       if (p.z < -0.42 && p.z > -0.62 && n.y > 0.35) return COL.silver; // shin guard
       if (p.z < -0.45 && p.z > -0.6 && out > 0.55 && n.y < 0.35) return COL.cobalt; // calf flash
       return COL.graphite;
@@ -398,9 +394,9 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
       loft(
         [
           { c: [0, 0, 0.07], ru: 0.04, rv: 0.04 },
-          { c: [0, 0, 0.035], ru: 0.08, rv: 0.08, rvN: 0.076 },
-          { c: [sx * 0.004, 0, -0.06], ru: 0.088, rv: 0.082, rvN: 0.08 },
-          { c: [0, 0, -0.18], ru: 0.077, rv: 0.07, rvN: 0.07 },
+          { c: [0, 0, 0.035], ru: 0.07, rv: 0.07, rvN: 0.066 },
+          { c: [sx * 0.004, 0, -0.06], ru: 0.076, rv: 0.072, rvN: 0.07 },
+          { c: [0, 0, -0.18], ru: 0.068, rv: 0.064, rvN: 0.062 },
           { c: [0, 0, -0.3], ru: 0.062, rv: 0.058, rvN: 0.057 },
           { c: [0, 0, -0.37], ru: 0.055, rv: 0.056, rvN: 0.052 },
           { c: [0, 0, -0.45], ru: 0.055, rv: 0.05, rvN: 0.062 },
@@ -414,14 +410,14 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
       suit, thigh, ['Pelvis', `Thigh_${sfx}`, `Shin_${sfx}`, `Foot_${sfx}`], 6,
     );
     // knee cap + outer knee puck
-    add(ellipsoid([0, 0.05, -0.37], [0.042, 0.022, 0.052], solid(COL.silverHi), { w: 20, h: 12 }),
+    add(ellipsoid([0, 0.048, -0.37], [0.046, 0.012, 0.058], solid(COL.silverHi), { w: 20, h: 12 }),
       mats.riderArmor, thigh, [`Thigh_${sfx}`, `Shin_${sfx}`], 6);
-    add(ellipsoid([sx * 0.058, 0.005, -0.38], [0.012, 0.034, 0.046], solid(COL.cobaltDeep), { w: 16, h: 10 }),
+    add(ellipsoid([sx * 0.056, 0.005, -0.38], [0.007, 0.036, 0.048], solid(COL.cobaltDeep), { w: 16, h: 10 }),
       mats.riderArmor, thigh, [`Thigh_${sfx}`, `Shin_${sfx}`], 6);
     // shin guard (two plates) over the shin
-    add(ellipsoid([0, 0.05, -0.5], [0.034, 0.014, 0.07], solid(COL.silverHi), { w: 14, h: 10 }),
+    add(ellipsoid([0, 0.048, -0.5], [0.036, 0.008, 0.072], solid(COL.silverHi), { w: 14, h: 10 }),
       mats.riderArmor, thigh, [`Shin_${sfx}`]);
-    add(ellipsoid([0, 0.046, -0.6], [0.03, 0.013, 0.05], solid(COL.cobalt), { w: 14, h: 10 }),
+    add(ellipsoid([0, 0.044, -0.6], [0.032, 0.008, 0.052], solid(COL.cobalt), { w: 14, h: 10 }),
       mats.riderArmor, thigh, [`Shin_${sfx}`]);
     // race boot shaft (Shin local) + foot
     add(
@@ -451,17 +447,19 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
       ),
       suit, foot, [`Foot_${sfx}`],
     );
-    add(ellipsoid([0, 0.05, -0.27], [0.03, 0.012, 0.06], solid(COL.silverHi), { w: 12, h: 8 }),
+    add(ellipsoid([0, 0.048, -0.27], [0.032, 0.007, 0.062], solid(COL.silverHi), { w: 12, h: 8 }),
       mats.riderArmor, shin, [`Shin_${sfx}`]);
     add(ellipsoid([0, 0.0, 0.03], [0.04, 0.03, 0.02], solid(COL.silverHi), { w: 12, h: 8 }),
       mats.riderArmor, foot, [`Foot_${sfx}`]);
-    add(ellipsoid([sx * 0.04, -0.012, -0.11], [0.012, 0.018, 0.04], solid(COL.silverHi), { w: 12, h: 8 }),
+    add(ellipsoid([sx * 0.04, -0.012, -0.11], [0.007, 0.018, 0.04], solid(COL.silverHi), { w: 12, h: 8 }),
       mats.riderArmor, foot, [`Foot_${sfx}`]);
   }
 
   // ---- HELMET (Head local: +Y up, -Z forward). Angular shell like the reference: 10-sided sections with
   // creased normals; the big dark visor and the silver/blue graphics are painted onto the shell.
   const hc: V3 = [0, 0.115, -0.015];
+  // reference proportions: helmet ~12% smaller than the first pass and seated lower on the neck
+  const HELMET_FIT = new THREE.Matrix4().makeTranslation(0, -0.024, 0.006).multiply(new THREE.Matrix4().makeScale(0.88, 0.88, 0.88));
   const helmetPaint: Painter = (p, n) => {
     const ly = p.y - hc[1], lz = p.z - hc[2], ax = Math.abs(p.x);
     if (lz < -0.04 && ly > -0.05 && ly < 0.052 && n.z < -0.1) return COL.visor; // wrap-around visor
@@ -483,6 +481,7 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
       { c: [0, 0.14, 0.186], ru: 0.024, rv: 0.02, rvN: 0.024 },
     ], helmetPaint, 10, 2);
     const g = toCreasedNormals(hg, 0.42);
+    g.applyMatrix4(HELMET_FIT);
     g.setIndex([...Array(g.attributes.position.count).keys()]);
     add(g, shell, head, ['Head']);
   }
@@ -492,14 +491,16 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     bar.rotateX(rx);
     bar.translate(0, y, z);
     bar.computeVertexNormals();
+    bar.applyMatrix4(HELMET_FIT);
     paintGeo(bar, solid(COL.cobalt));
     add(bar, mats.riderGlow, head, ['Head']);
   }
-  add(ellipsoid([0, 0.236, 0.12], [0.05, 0.012, 0.055], solid(COL.black), { w: 16, h: 8 }), shell, head, ['Head']);
+  add(ellipsoid([0, 0.236, 0.12], [0.05, 0.012, 0.055], solid(COL.black), { w: 16, h: 8 }).applyMatrix4(HELMET_FIT), shell, head, ['Head']);
   for (const sx of [-1, 1]) {
     const vent = ellipsoid([0, 0, 0], [0.012, 0.006, 0.03], solid(COL.graphite), { w: 10, h: 6 });
     vent.rotateX(0.35);
     vent.translate(sx * 0.03, 0.238, -0.06);
+    vent.applyMatrix4(HELMET_FIT);
     add(vent, shell, head, ['Head']);
   }
 
