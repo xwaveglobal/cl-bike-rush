@@ -1,0 +1,217 @@
+<title>Đối chiếu Bike Rush 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one reading column — summary table first, then one card per mismatched detail (image pair + notes). */
+:root {
+  --bg: #f3f4f7; --card: #ffffff; --fg: #161a22; --muted: #5b6475; --line: #dde1e8;
+  --accent: #1d56f2; --hi: #c8361f; --hi-bg: #fbe9e5; --mid: #9a6a00; --mid-bg: #fbf1d8; --lo: #3d6b4f; --lo-bg: #e3f1e8;
+  --f-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Be Vietnam Pro", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1017; --card: #151a24; --fg: #e7eaf2; --muted: #9aa3b5; --line: #262d3b;
+  --accent: #6d93ff; --hi: #ff8a73; --hi-bg: #3a1d18; --mid: #f0c25a; --mid-bg: #33280f; --lo: #83c9a0; --lo-bg: #15291e; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0d1017; --card: #151a24; --fg: #e7eaf2; --muted: #9aa3b5; --line: #262d3b;
+  --accent: #6d93ff; --hi: #ff8a73; --hi-bg: #3a1d18; --mid: #f0c25a; --mid-bg: #33280f; --lo: #83c9a0; --lo-bg: #15291e; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--f-body); }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 28px; }
+.eyebrow { font: 500 11px/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+h1 { margin: 6px 0 8px; font: 700 34px/1.1 var(--f-display); text-wrap: balance; }
+h2 { margin: 0 0 10px; font: 700 20px/1.2 var(--f-display); }
+h3 { margin: 0; font: 700 18px/1.25 var(--f-display); flex: 1 1 auto; min-width: 0; }
+.lede { margin: 0; color: var(--muted); max-width: 68ch; }
+.stats { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; font-size: 14px; }
+.stat b { font: 700 18px var(--f-display); margin-right: 6px; font-variant-numeric: tabular-nums; }
+.tbl { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); }
+th { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.num { font-family: var(--f-mono); color: var(--muted); width: 3em; }
+.pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.pill.hi { color: var(--hi); background: var(--hi-bg); }
+.pill.mid { color: var(--mid); background: var(--mid-bg); }
+.pill.lo { color: var(--lo); background: var(--lo-bg); }
+.cards { display: flex; flex-direction: column; gap: 22px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.card header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.no { font: 600 13px var(--f-mono); color: var(--accent); }
+.view { font-size: 13px; color: var(--muted); }
+.card img { width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--line); background: #f7f8fa; }
+dl { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+dt { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+dd { margin: 0; font-size: 14px; }
+.fix dd { color: var(--fg); font-weight: 500; }
+.fix dt { color: var(--accent); }
+.note { font-size: 13px; color: var(--muted); max-width: 72ch; }
+@media (max-width: 720px) { dl { grid-template-columns: minmax(0, 1fr); } h1 { font-size: 27px; } }
+</style>
+<div class="wrap">
+  <section>
+    <span class="eyebrow">Bike Rush · vật thể chính</span>
+    <h1>Đối chiếu ảnh mẫu với bản 3D</h1>
+    <p class="lede">16 chi tiết đồ họa chưa khớp. Mỗi cặp ảnh cắt cùng một vùng trên ảnh mẫu và trên bản 3D (bản chi tiết ngày 25/10), chụp nền sáng, ống kính gần như không phối cảnh, căn theo trục bánh xe ở các góc ngang.</p>
+    <div class="stats">
+      <div class="stat"><b>6</b>ưu tiên cao</div>
+      <div class="stat"><b>8</b>ưu tiên vừa</div>
+      <div class="stat"><b>2</b>ưu tiên thấp</div>
+    </div>
+  </section>
+  <section>
+    <h2>Danh sách theo ưu tiên</h2>
+    <div class="tbl"><table><thead><tr><th>#</th><th>Chi tiết</th><th>Góc</th><th>Ưu tiên</th></tr></thead><tbody><tr><td class="num">01</td><td>Tỉ lệ tổng thể</td><td>Ngang, không người lái</td><td><span class="pill hi">Cao</span></td></tr><tr><td class="num">02</td><td>Đầu xe, kính chắn gió, đèn pha</td><td>Ngang</td><td><span class="pill hi">Cao</span></td></tr><tr><td class="num">03</td><td>Ốp sườn, vạch xanh, khe gió</td><td>Ngang</td><td><span class="pill hi">Cao</span></td></tr><tr><td class="num">05</td><td>Đuôi xe, yên sau, đèn hậu</td><td>Ngang</td><td><span class="pill hi">Cao</span></td></tr><tr><td class="num">10</td><td>Đầu xe chính diện, đèn pha, gương</td><td>Trước</td><td><span class="pill hi">Cao</span></td></tr><tr><td class="num">15</td><td>Dáng ngồi người lái</td><td>Ngang</td><td><span class="pill hi">Cao</span></td></tr><tr><td class="num">04</td><td>Bình xăng, yên, khung</td><td>Ngang</td><td><span class="pill mid">Vừa</span></td></tr><tr><td class="num">06</td><td>Động cơ, gác chân, cánh gầm</td><td>Ngang</td><td><span class="pill mid">Vừa</span></td></tr><tr><td class="num">08</td><td>Bánh trước, phanh, phuộc</td><td>Ngang</td><td><span class="pill mid">Vừa</span></td></tr><tr><td class="num">09</td><td>Bánh sau, gắp, xích</td><td>Ngang</td><td><span class="pill mid">Vừa</span></td></tr><tr><td class="num">11</td><td>Mũ bảo hiểm và vai</td><td>Trước</td><td><span class="pill mid">Vừa</span></td></tr><tr><td class="num">12</td><td>Đuôi xe và đèn hậu</td><td>Sau</td><td><span class="pill mid">Vừa</span></td></tr><tr><td class="num">13</td><td>Lưng, gù lưng, mũ</td><td>Sau</td><td><span class="pill mid">Vừa</span></td></tr><tr><td class="num">16</td><td>Ống xả và gắp bên phải</td><td>Phải</td><td><span class="pill mid">Vừa</span></td></tr><tr><td class="num">07</td><td>Bầu pô dưới gầm</td><td>Ngang</td><td><span class="pill lo">Thấp</span></td></tr><tr><td class="num">14</td><td>Chân, giày, bánh sau</td><td>Sau</td><td><span class="pill lo">Thấp</span></td></tr></tbody></table></div>
+    <p class="note">Ảnh mẫu dùng camera gần ở góc trước và sau, nên tỉ lệ ở các cặp 10–14 chỉ mang tính tương đối: các cặp đó được căn theo chiều cao của chính chiếc xe (mặt đất tới đèn pha hoặc đèn hậu).</p>
+  </section>
+  <section class="cards">
+<article class="card" id="d01">
+  <header><span class="no">01</span><h3>Tỉ lệ tổng thể</h3><span class="view">Ngang, không người lái</span><span class="pill hi">Ưu tiên cao</span></header>
+  <img src="img/01.jpg" alt="Ảnh mẫu và bản 3D: Tỉ lệ tổng thể" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Đầu xe cao và ngắn, mũi nhọn chúc xuống. Kính dựng đứng, cao. Bình xăng cao, gù lên. Yên dài nằm ngang. Đuôi mảnh, vút cao, đầu nhọn.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Đầu xe dài và thấp như mỏ chim. Ốp sườn phồng thành khối. Đuôi dày, phẳng. Khoảng trống lớn dưới yên.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Nâng mũi khoảng 8 cm và rút ngắn khoảng 10 cm. Kính cao thêm khoảng 10 cm, dựng đứng hơn. Nâng bình xăng khoảng 5 cm. Thu mảnh đuôi, đầu đuôi lên khoảng 1,0 m.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d02">
+  <header><span class="no">02</span><h3>Đầu xe, kính chắn gió, đèn pha</h3><span class="view">Ngang</span><span class="pill hi">Ưu tiên cao</span></header>
+  <img src="img/02.jpg" alt="Ảnh mẫu và bản 3D: Đầu xe, kính chắn gió, đèn pha" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Đèn pha là cụm tam giác cyan ở mũi nhọn, viền đen. Kính khói cao. Gương hình thang góc cạnh. Ốp xếp tầng: bạc trên, đen giữa, vạch xanh dưới.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Mũi tròn dẹt, đèn gần như bị che khi nhìn ngang. Kính thấp. Gương tròn nhỏ.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Mũi nhọn có cạnh, hốc đèn tam giác nằm hẳn ở mũi. Kính cao hơn. Gương hình thang. Thêm dải đen giữa hai lớp bạc.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d03">
+  <header><span class="no">03</span><h3>Ốp sườn, vạch xanh, khe gió</h3><span class="view">Ngang</span><span class="pill hi">Ưu tiên cao</span></header>
+  <img src="img/03.jpg" alt="Ảnh mẫu và bản 3D: Ốp sườn, vạch xanh, khe gió" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Nhiều tấm bạc mỏng ghép chồng, cạnh chữ V sắc. Vạch xanh hình mũi tên gấp khúc nằm trong khe. Khe gió đen có lưới. Mép dưới nhọn chĩa xuống.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Một khối phồng duy nhất, vạch xanh thẳng in phẳng, mép bo tròn.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Tách thành 2–3 tấm ốp mỏng xếp chồng có khe hở. Vẽ vạch xanh theo hình mũi tên gấp khúc. Khe gió đen có lưới. Mép dưới vát nhọn.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d04">
+  <header><span class="no">04</span><h3>Bình xăng, yên, khung</h3><span class="view">Ngang</span><span class="pill mid">Ưu tiên vừa</span></header>
+  <img src="img/04.jpg" alt="Ảnh mẫu và bản 3D: Bình xăng, yên, khung" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Bình gù góc cạnh, đỉnh bạc, hông có miếng đệm gối đen viền xanh. Khung đen dày lộ rõ dưới bình. Yên đen phẳng, dài.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Bình là vòm tròn bạc lớn, mảng xanh phía trước to. Khung bạc mảnh bị che.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Bình có các mặt phẳng, thêm đệm gối đen viền xanh. Khung đổi màu đen, dày hơn, lộ ra giữa bình và máy.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d05">
+  <header><span class="no">05</span><h3>Đuôi xe, yên sau, đèn hậu</h3><span class="view">Ngang</span><span class="pill hi">Ưu tiên cao</span></header>
+  <img src="img/05.jpg" alt="Ảnh mẫu và bản 3D: Đuôi xe, yên sau, đèn hậu" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Đuôi mảnh, nhọn, vút cao, mặt bạc có vạch xanh. Đèn hậu cyan hình mũi tên ở đầu nhọn. Yên sau đen nhỏ. Khung phụ mảnh lộ dưới đuôi.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Đuôi dày như tấm phẳng, vạch xanh chéo lớn, khối đen nặng dưới đuôi.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Thu mỏng đuôi khoảng 40%, nâng đầu đuôi. Đèn hậu mũi tên ở mũi đuôi. Bỏ khối đen lớn bên dưới, thay bằng khung phụ mảnh.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d06">
+  <header><span class="no">06</span><h3>Động cơ, gác chân, cánh gầm</h3><span class="view">Ngang</span><span class="pill mid">Ưu tiên vừa</span></header>
+  <img src="img/06.jpg" alt="Ảnh mẫu và bản 3D: Động cơ, gác chân, cánh gầm" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Máy nhiều tầng chi tiết: nắp ly hợp tròn bắt bu-lông, ống, dây. Gác chân nhôm cắt CNC có lỗ. Cánh gầm bạc-xanh ở dưới.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Phần lớn là mảng đen. Nắp ly hợp nhìn như vòng tròn rỗng. Gác chân là thanh tròn.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Thêm khối máy nhiều tầng, nắp ly hợp đặc. Gác chân dạng tấm cắt lỗ. Cánh gầm bạc có vạch xanh.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d07">
+  <header><span class="no">07</span><h3>Bầu pô dưới gầm</h3><span class="view">Ngang</span><span class="pill lo">Ưu tiên thấp</span></header>
+  <img src="img/07.jpg" alt="Ảnh mẫu và bản 3D: Bầu pô dưới gầm" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Bầu pô hình hộp bạc nằm dưới gầm, liền với cánh gầm xanh.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Chỉ thấy ống tròn đen và ống bạc mảnh.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Thêm hộp bầu pô bạc phẳng dưới gầm, nối với cổ pô.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d08">
+  <header><span class="no">08</span><h3>Bánh trước, phanh, phuộc</h3><span class="view">Ngang</span><span class="pill mid">Ưu tiên vừa</span></header>
+  <img src="img/08.jpg" alt="Ảnh mẫu và bản 3D: Bánh trước, phanh, phuộc" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Đĩa khoan lỗ dày đặc. Heo dầu đỏ-bạc to. Phuộc vàng lớn, chân phuộc đen. Vành 10 chấu mảnh, chắn bùn trước rõ.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Đĩa đúng hướng nhưng lỗ thưa. Heo dầu nhỏ, bị che. Vành 5 chấu chữ Y dày.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Vành 10 chấu mảnh. Heo dầu to màu đỏ. Phuộc vàng to hơn. Chắn bùn trước rõ hơn. Tăng mật độ lỗ đĩa.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d09">
+  <header><span class="no">09</span><h3>Bánh sau, gắp, xích</h3><span class="view">Ngang</span><span class="pill mid">Ưu tiên vừa</span></header>
+  <img src="img/09.jpg" alt="Ảnh mẫu và bản 3D: Bánh sau, gắp, xích" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Gắp nhôm to dạng hộp có gân, cục tăng xích ở đuôi gắp. Vành 10 chấu. Chắn bùn sau đen ôm bánh.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Gắp là ống tròn mảnh. Thiếu chắn bùn sau.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Gắp dạng hộp to có gân và lỗ. Thêm chắn bùn sau ôm bánh. Vành 10 chấu.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d10">
+  <header><span class="no">10</span><h3>Đầu xe chính diện, đèn pha, gương</h3><span class="view">Trước</span><span class="pill hi">Ưu tiên cao</span></header>
+  <img src="img/10.jpg" alt="Ảnh mẫu và bản 3D: Đầu xe chính diện, đèn pha, gương" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Mũi hẹp nhọn, hai đèn tam giác viền sát mũi, khe gió đỏ ở giữa. Ốp bạc-xanh rộng hai bên. Gương to hình thang.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Đèn là hai thanh chữ nhật. Mũi tròn, phần dưới hẹp. Gương nhỏ, tròn.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Đèn tam giác có viền. Khe gió đỏ ở giữa. Ốp hai bên rộng ra. Gương hình thang.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d11">
+  <header><span class="no">11</span><h3>Mũ bảo hiểm và vai</h3><span class="view">Trước</span><span class="pill mid">Ưu tiên vừa</span></header>
+  <img src="img/11.jpg" alt="Ảnh mẫu và bản 3D: Mũ bảo hiểm và vai" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Mũ góc cạnh, kính đen lớn chiếm cả mặt, sọc bạc giữa đỉnh, đèn cyan trên trán. Giáp vai to nhiều lớp.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Mũ tròn như quả bóng, kính không rõ. Vai nhỏ.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Mũ có cạnh gấp, kính đen lớn dạng tấm, đèn cyan trên trán. Giáp vai to hơn.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d12">
+  <header><span class="no">12</span><h3>Đuôi xe và đèn hậu</h3><span class="view">Sau</span><span class="pill mid">Ưu tiên vừa</span></header>
+  <img src="img/12.jpg" alt="Ảnh mẫu và bản 3D: Đuôi xe và đèn hậu" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Mặt đuôi rộng góc cạnh, hai đèn cyan hình thoi lớn, đèn phanh đỏ nhỏ ở giữa phía dưới.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Mặt đuôi bị lưng người lái che vì người ngồi thấp. Đèn nhỏ.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Mở rộng mặt đuôi, đèn hậu to hơn. Thêm đèn phanh đỏ dạng thanh mảnh, đặt sao cho không thành hình cái miệng.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d13">
+  <header><span class="no">13</span><h3>Lưng, gù lưng, mũ</h3><span class="view">Sau</span><span class="pill mid">Ưu tiên vừa</span></header>
+  <img src="img/13.jpg" alt="Ảnh mẫu và bản 3D: Lưng, gù lưng, mũ" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Người lái to, vai rộng. Chữ V bạc lớn sau lưng kẹp hai mảng xanh. Gù lưng bạc góc cạnh. Đèn cyan sau mũ.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Người lái nhỏ và thấp, lưng gần như khuất.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Ngồi cao hơn, cân nhắc phóng to người lái 10–15%. Chữ V bạc to hơn. Gù lưng có cạnh.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d14">
+  <header><span class="no">14</span><h3>Chân, giày, bánh sau</h3><span class="view">Sau</span><span class="pill lo">Ưu tiên thấp</span></header>
+  <img src="img/14.jpg" alt="Ảnh mẫu và bản 3D: Chân, giày, bánh sau" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Giày to có mảng bạc và xanh. Lốp sau rất to. Ống xả tròn lộ ra bên phải.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Chân mảnh. Không thấy ống xả từ phía sau.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Giày to hơn. Đẩy ống xả ra ngoài để lộ từ phía sau.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d15">
+  <header><span class="no">15</span><h3>Dáng ngồi người lái</h3><span class="view">Ngang</span><span class="pill hi">Ưu tiên cao</span></header>
+  <img src="img/15.jpg" alt="Ảnh mẫu và bản 3D: Dáng ngồi người lái" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Ngồi cao, lưng nghiêng khoảng 45°, đầu nhô hẳn trên kính, khuỷu tay gập.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Rạp sát bình xăng, đầu ngang mép kính.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Tư thế chạy thường cho ngồi cao như mẫu, giữ tư thế rạp cho cúi thấp/turbo. Gập khuỷu tay nhiều hơn.</dd></div>
+  </dl>
+</article>
+<article class="card" id="d16">
+  <header><span class="no">16</span><h3>Ống xả và gắp bên phải</h3><span class="view">Phải</span><span class="pill mid">Ưu tiên vừa</span></header>
+  <img src="img/16.jpg" alt="Ảnh mẫu và bản 3D: Ống xả và gắp bên phải" loading="lazy">
+  <dl>
+    <div><dt>Ảnh mẫu</dt><dd>Ống xả lớn, tròn bạc, chếch lên dưới yên, có tấm chắn nhiệt. Gắp dạng hộp.</dd></div>
+    <div><dt>Bản 3D hiện tại</dt><dd>Ống xả nhỏ, thấp, bị gắp che một phần.</dd></div>
+    <div class="fix"><dt>Hướng sửa</dt><dd>Ống xả to hơn và chếch cao hơn, thêm tấm chắn nhiệt. Gắp dạng hộp.</dd></div>
+  </dl>
+</article>
+  </section>
+</div>

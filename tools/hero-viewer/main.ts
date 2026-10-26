@@ -233,6 +233,14 @@ function frame(now: number) {
 
 // test hooks: snap camera / pose instantly (used by automated screenshots)
 (window as unknown as Record<string, unknown>).__viewer = {
+  // studio look for side-by-side comparison with the reference sheet (light backdrop, no road)
+  studio: (on: boolean) => {
+    scene.background = new THREE.Color(on ? 0xe3e5e9 : 0x070b18);
+    scene.fog = on ? null : new THREE.Fog(0x070b18, 14, 46);
+    road.visible = !on;
+  },
+  fov: (deg: number) => { camera.fov = deg; camera.updateProjectionMatrix(); },
+  rider: (on: boolean) => { rig.riderMesh.visible = on; },
   view: (n: string) => { toggleDemo(false); setView(n, true); },
   cam: (p: [number, number, number], l: [number, number, number]) => { toggleDemo(false); camK = 1; camera.position.set(...p); controls.target.set(...l); controls.update(); },
   pose: (n: string) => { toggleDemo(false); setPose(n, false); Object.assign(cur, POSES[n]); },
