@@ -2048,19 +2048,19 @@ export function applyBikeRiderPose(rig: {
   const pelvisX =
     lean * 0.09 * (1 - downSlide) + -slideSide * 0.065 * downSlide;
   const pelvisY =
-    BIKE_ERGO.pelvisY + air * 0.048 - lowTuck * 0.035 - downSlide * 0.06;
+    BIKE_ERGO.pelvisY + air * 0.048 - lowTuck * 0.015 - downSlide * 0.06;
   const pelvisZ =
     BIKE_ERGO.pelvisZ + lowTuck * 0.05 + downSlide * 0.02 - air * 0.02;
 
   b.Pelvis.position.set(pelvisX, pelvisY, pelvisZ);
   // Forward pelvis tilt: ~0.34 rad in normal riding, ~0.88 rad in DownSlide
-  const pelvisPitch = -0.56 - lowTuck * 0.2 - downSlide * 0.1 - air * 0.08 + breathe;
+  const pelvisPitch = -0.56 - lowTuck * 0.09 - downSlide * 0.1 - air * 0.08 + breathe;
   const pelvisRoll = -lean * 0.10 * (1 - downSlide) + slideSide * 0.12 * downSlide;
   const pelvisYaw = -lean * 0.08 * (1 - downSlide) - slideSide * 0.06 * downSlide;
   b.Pelvis.rotation.set(pelvisPitch, pelvisYaw, pelvisRoll);
 
   // Spine segments flex forward in LowTuck & DownSlide so chest presses flat against the fuel tank
-  const spineFlex = -0.22 - lowTuck * 0.08 - downSlide * 0.05;
+  const spineFlex = -0.22 - lowTuck * 0.035 - downSlide * 0.05;
   // hang off into the turn: the upper body leans further than the bike
   const spineLeanRoll = -lean * 0.13 * (1 - downSlide) + slideSide * 0.06 * downSlide + buzz;
   b.Spine_1.rotation.set(spineFlex, 0, spineLeanRoll);
@@ -2071,7 +2071,7 @@ export function applyBikeRiderPose(rig: {
   // Auto-level the helmet: neck + head cancel the whole torso pitch so the rider always looks down the road
   // (chin just above the tank in LowTuck instead of the head folding into the bodywork).
   const torsoPitch = pelvisPitch + spineFlex * 3.0;
-  const neckPitch = Math.max(0.35, (-torsoPitch - 0.12) / 1.07) + air * 0.04;
+  const neckPitch = Math.max(0.35, (-torsoPitch + 0.02) / 1.07) + air * 0.04;
   b.Neck.rotation.set(neckPitch * 0.55, 0, 0);
   // keep the eyes level with the horizon while the bike banks
   const headCounterRoll = lean * 0.38 * (1 - downSlide) - slideSide * 0.14 * downSlide;
@@ -2382,9 +2382,9 @@ export function createBikeRiderMaterials(textures?: BikeRiderPBRTextures | numbe
 
   const visor = new THREE.MeshPhysicalMaterial({
     name: 'Mat_Smoked_Visor',
-    color: 0x101828,
-    roughness: 0.06,
-    metalness: 0.35,
+    color: 0x1c2f52,
+    roughness: 0.04,
+    metalness: 0.65,
     clearcoat: 1.0,
     clearcoatRoughness: 0.03,
   });

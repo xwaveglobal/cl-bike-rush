@@ -4,6 +4,15 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 
 ---
 
+## 2026-10-27 — Mũ bảo hiểm chi tiết + livery bộ đồ nướng texture (branch `feat/hero-3d`)
+
+- `src/render/RiderHelmet.ts` (mới): mũ full-face riêng, gắn cứng vào xương Head. Vỏ có cằm nhô ra, livery vẽ theo từng texel trong không gian 3D (không lỗi đường nối): mảng bạc trán rộng hẹp dần ra sau có viền xanh, đường V xanh, swoosh bạc lớn từ cằm lên đuôi, viền xanh quanh kính, mảng xanh sau dưới. Kính là khối dày riêng (cạnh cong), viền bạc trên, đèn cyan giữa trán + 2 vạch góc kính, 2 thanh cyan sau gáy, chốt kính nhỏ, đuôi gió bám theo vỏ, khe gió trên/cằm, đệm cổ. Mọi chi tiết gắn lên vỏ dùng `shellBlock` (khối bám mặt cầu đã biến dạng) nên không còn lơ lửng.
+- Sửa lỗi: UV v của vỏ cắt ở theta 2.42 chứ không phải π → hoạ tiết trước đây bị lệch lên trên.
+- Đầu nhìn thẳng đường hơn (pitch ≈ +1° thay vì −7°), low tuck bớt gập.
+- `RiderHuman.ts`: các phần loft của bộ đồ (thân, tay, chân, găng, ống giày) được nướng vào atlas 1024² (màu + roughness/metalness) từ chính painter → nét sắc thay cho bậc thang vertex color. Lưng theo crop 22: tấm V bạc, dải xanh xiên ở sườn, tấm thận bạc, đường may.
+- Tam giác: LOD0 ~70k, LOD1 ~47k, LOD2 ~33k. Typecheck vẫn 15 lỗi có sẵn.
+- Tiếp theo: dáng/tỉ lệ người (vai, lưng cong), swoosh mũ cong hơn ở nhìn ngang.
+
 ## 2026-10-26 (chiều) — Người lái bớt cứng (branch `feat/hero-3d`)
 
 **Done**: `RiderHuman.ts`: mũ thu 88% và hạ sát vai, hông/mông/đùi thon lại, lưng trên tròn + cổ/vai đầy hơn, giáp ép dẹt thành tấm (bỏ "quả cầu"), giảm độ bóng giáp, lưới thân dày hơn để mảng màu sắc nét; phối màu: tay áo đen, chữ V bạc hẹp sau lưng. `BikeRiderAsset.ts`: khuỷu tay mở ra ngoài, ngồi nhích lên + rạp thêm cho khuỷu gập; chuyển động phụ (thở, rung theo đường, đầu khẽ đảo nhìn đường, nghiêng người vào cua, đầu giữ ngang chân trời). Ảnh: `docs/hero-3d/master/rider-before-after.jpg`.

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { mergeGeometries, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { BikeRiderMaterials } from './BikeRiderAsset.ts';
+import { buildHelmetParts } from './RiderHelmet.ts';
 
 /**
  * Organic (human-proportioned) rider for the Bike Rush hero bike.
@@ -92,12 +93,14 @@ export function loft(keys: Sec[], paint: Painter, radial = 22, sub = 4, uAxis: V
   const U0 = new THREE.Vector3(...uAxis);
   const T = new THREE.Vector3(), u = new THREE.Vector3(), v = new THREE.Vector3(), q = new THREE.Vector3();
 
+  const frames: { u: THREE.Vector3; v: THREE.Vector3 }[] = [];
   for (let r = 0; r < rings.length; r++) {
     const ring = rings[r];
     const prev = rings[Math.max(0, r - 1)].c, next = rings[Math.min(rings.length - 1, r + 1)].c;
     T.subVectors(next, prev).normalize();
     u.copy(U0).addScaledVector(T, -U0.dot(T)).normalize();
     v.crossVectors(u, T).normalize();
+    frames.push({ u: u.clone(), v: v.clone() });
     const e = 2 / ring.p;
     for (let j = 0; j <= R; j++) {
       const ang = (j / R) * Math.PI * 2;
@@ -145,7 +148,50 @@ export function loft(keys: Sec[], paint: Painter, radial = 22, sub = 4, uAxis: V
     nrm.setXYZ(b, nx / l, ny / l, nz / l);
   }
   paintGeo(g, paint, params);
+  // surface evaluator (uv -> point) so the painter can be baked into a crisp texture instead of
+  // living only on the sparse vertices
+  let len = 0, circ = 0;
+  for (let r = 1; r < rings.length; r++) len += rings[r].c.distanceTo(rings[r - 1].c);
+  for (const r of rings) circ = Math.max(circ, Math.PI * (r.ru + r.ruN + r.rv + r.rvN) * 0.5);
+  const point = (uu: number, vv: number, out: THREE.Vector3) => {
+    const f = Math.min(rings.length - 1.0001, Math.max(0, vv * (rings.length - 1)));
+    const r0 = Math.floor(f), t = f - r0, A = rings[r0], B = rings[r0 + 1];
+    const L = (x: number, y: number) => x + (y - x) * t;
+    const fu = frames[r0].u, fu1 = frames[r0 + 1].u, fv = frames[r0].v, fv1 = frames[r0 + 1].v;
+    const ang = uu * Math.PI * 2, cs = Math.cos(ang), sn = Math.sin(ang), e = 2 / L(A.p, B.p);
+    const cu = Math.sign(cs) * Math.pow(Math.abs(cs), e) * (cs >= 0 ? L(A.ru, B.ru) : L(A.ruN, B.ruN));
+    const sv = Math.sign(sn) * Math.pow(Math.abs(sn), e) * (sn >= 0 ? L(A.rv, B.rv) : L(A.rvN, B.rvN));
+    out.set(L(A.c.x, B.c.x), L(A.c.y, B.c.y), L(A.c.z, B.c.z));
+    const cx = out.x, cy = out.y, cz = out.z;
+    out.x += L(fu.x, fu1.x) * cu + L(fv.x, fv1.x) * sv;
+    out.y += L(fu.y, fu1.y) * cu + L(fv.y, fv1.y) * sv;
+    out.z += L(fu.z, fu1.z) * cu + L(fv.z, fv1.z) * sv;
+    return [cx, cy, cz] as const;
+  };
+  const q1 = new THREE.Vector3(), q2 = new THREE.Vector3(), d1 = new THREE.Vector3(), d2 = new THREE.Vector3();
+  const surf: Surface = {
+    paint, len, circ,
+    evalAt(uu, vv, outP, outN) {
+      const c = point(uu, vv, outP);
+      point(uu + 0.002, vv, q1);
+      point(uu, Math.min(1, vv + 0.002), q2);
+      d1.subVectors(q1, outP);
+      d2.subVectors(q2, outP);
+      if (vv >= 0.998) { point(uu, vv - 0.002, q2); d2.subVectors(outP, q2); }
+      outN.crossVectors(d1, d2).normalize();
+      if (outN.x * (outP.x - c[0]) + outN.y * (outP.y - c[1]) + outN.z * (outP.z - c[2]) < 0) outN.negate();
+    },
+  };
+  g.userData.surf = surf;
   return g;
+}
+
+/** a loft's analytic surface + painter, used to bake the rider livery texture */
+export interface Surface {
+  paint: Painter;
+  len: number;
+  circ: number;
+  evalAt(u: number, v: number, outP: THREE.Vector3, outN: THREE.Vector3): void;
 }
 
 /** Ellipsoid (optionally a partial sphere band) */
@@ -270,18 +316,33 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
 
   // ---- TORSO: one continuous surface from seat to neck (built directly in bind space).
   // v = u × tangent: with the spine running up/forward, +v points to the BACK, -v to the chest.
+  const SEAM = C(0x343b48);
   const torsoPaint: Painter = (p, n) => {
-    // cobalt side panels (ribs → hips), cobalt chest yoke, graphite back, cobalt collar
-    // reference suit: black leathers, silver V-yoke down the back flanked by cobalt panels,
-    // silver chest plate, cobalt side stripe and collar
+    // reference back (crop 22): silver V plate from the shoulder blades to a point at mid-back,
+    // slanted cobalt strips on the ribs, small slanted silver kidney plates, many stitched panel
+    // seams on black leather; silver chest plate, cobalt collar
     const backN = n.z * 0.9 + n.y * 0.3;
     const frontN = -n.z * 0.9 - n.y * 0.4;
-    const vEdge = 0.024 + Math.max(0, p.y - 0.96) * 0.33; // narrow silver V like the reference
     const ax = Math.abs(p.x);
+    const edge = 0.02 + Math.max(0, p.y - 1.0) * 0.4; // V half-width
+    const near = (d: number, w = 0.0022) => Math.abs(d) < w;
     let c = COL.graphite;
-    if (backN > 0.1 && p.y > 0.96 && ax < vEdge) c = COL.silver;
-    else if (backN > 0.0 && p.y > 0.98 && ax >= vEdge + 0.012 && ax < vEdge + 0.05) c = COL.cobalt;
-    if (band(Math.abs(n.x), 0.95, 0.03) * (p.y > 0.86 && p.y < 1.14 ? 1 : 0) > 0.5) c = COL.cobalt;
+    if (backN > 0.05) {
+      const rib = ax - (edge + 0.06); // rib strip centre line, parallel to the V edge
+      const kid = ax - (0.07 + (0.935 - p.y) * 0.45); // slanted kidney plate centre line
+      if (p.y > 1.0 && ax < edge) c = ax < 0.0025 ? COL.silver : COL.silverHi;
+      else if (p.y > 0.99 && near(ax - edge - 0.012)) c = SEAM;
+      else if (p.y > 0.99 && p.y < 1.002 && ax < edge + 0.012) c = SEAM;
+      else if (p.y > 0.97 && p.y < 1.21 && Math.abs(rib) < 0.022) c = COL.cobalt;
+      else if (p.y > 0.97 && p.y < 1.21 && near(Math.abs(rib) - 0.03)) c = SEAM;
+      else if (p.y > 0.855 && p.y < 0.935 && Math.abs(kid) < 0.02 && backN > 0.3) c = COL.silver;
+      else if (near(p.y - 0.955) || (p.y < 0.99 && near(ax)) || near(p.y - 0.84)) c = SEAM;
+      else if (p.y > 0.96 && p.y < 1.05 && near(ax - 0.05 - (1.05 - p.y) * 0.6)) c = SEAM;
+    }
+    // cobalt side panel along the ribs (side view), with a seam above it
+    const side = Math.abs(n.x);
+    if (side > 0.86 && p.y > 0.86 && p.y < 1.12) c = COL.cobalt;
+    else if (side > 0.8 && side <= 0.86 && p.y > 0.86 && p.y < 1.12) c = SEAM;
     if (frontN > 0.45 && p.y > 1.13 && ax < 0.12) c = COL.silver;
     if (p.y > 1.29 && p.y < 1.33) c = COL.cobalt;
     return c;
@@ -323,9 +384,11 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     const armPaint: Painter = (p, n) => {
       // top of the arm while riding = n.x * inSign > 0 (see IK frame)
       const top = n.x * inSign;
-      if (p.z > -0.05 && top > 0.45) return COL.silver; // shoulder cap
-      if (p.z > -0.19 && p.z < -0.08 && top > 0.75) return COL.silver; // upper-arm plate
-      if (p.z < -0.32 && p.z > -0.45 && top > 0.72) return COL.silver; // forearm guard
+      if (p.z > -0.065 && top > 0.15) return p.z < -0.03 && p.z > -0.045 && top > 0.5 ? COL.cobalt : COL.silver; // shoulder cap
+      if (p.z > -0.2 && p.z < -0.08 && top > 0.35) return top > 0.88 ? COL.cobalt : COL.silver; // upper-arm plate
+      if (p.z > -0.2 && p.z < -0.08 && top > 0.28) return SEAM;
+      if (p.z < -0.305 && p.z > -0.47 && top > 0.1) return p.z < -0.36 && p.z > -0.41 && top > 0.75 ? COL.cobalt : COL.silver; // forearm guard
+      if (Math.abs(p.z + 0.3) < 0.003 || Math.abs(p.z + 0.475) < 0.003) return SEAM;
       return COL.graphite;
     };
     add(
@@ -385,9 +448,11 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     // ---- LEG: hip → ankle in one piece (Thigh local, runs along -Z; +v becomes the knee front)
     const legPaint: Painter = (p, n) => {
       const out = n.x * sx;
-      if (p.z > -0.3 && p.z < -0.04 && out > 0.72) return COL.cobalt; // outer thigh panel
-      if (p.z < -0.42 && p.z > -0.62 && n.y > 0.35) return COL.silver; // shin guard
-      if (p.z < -0.45 && p.z > -0.6 && out > 0.55 && n.y < 0.35) return COL.cobalt; // calf flash
+      if (p.z > -0.05 && out > 0.45) return COL.silver; // hip slider patch
+      if (p.z > -0.3 + (1 - out) * 0.25 && p.z < -0.07 && out > 0.5) return COL.cobalt; // outer thigh panel
+      if (p.z < -0.42 && p.z > -0.63 && n.y > 0.2) return n.y > 0.8 && p.z < -0.5 && p.z > -0.56 ? COL.cobalt : COL.silver; // shin guard
+      if (p.z < -0.45 && p.z > -0.6 && out > 0.5 && n.y < 0.2) return COL.cobalt; // calf flash
+      if (Math.abs(p.z + 0.07) < 0.003 && out > 0.3) return SEAM;
       return COL.graphite;
     };
     add(
@@ -429,7 +494,7 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
           { c: [0, 0, -0.35], ru: 0.044, rv: 0.044, rvN: 0.044 },
           { c: [0, 0, -0.375], ru: 0.03, rv: 0.03 },
         ],
-        (p, n) => mix(COL.black, COL.cobalt, band(n.x * sx, 0.65, 0.12) * band(p.z, -0.32, 0.04) * (1 - band(p.z, -0.22, 0.03))),
+        (p, n) => (p.z < -0.335 ? COL.silver : n.x * sx > 0.1 || n.y > 0.5 ? COL.cobalt : COL.black),
         14, 2,
       ),
       suit, shin, [`Shin_${sfx}`, `Foot_${sfx}`], 6,
@@ -455,58 +520,16 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
       mats.riderArmor, foot, [`Foot_${sfx}`]);
   }
 
-  // ---- HELMET (Head local: +Y up, -Z forward). Angular shell like the reference: 10-sided sections with
-  // creased normals; the big dark visor and the silver/blue graphics are painted onto the shell.
-  const hc: V3 = [0, 0.115, -0.015];
-  // reference proportions: helmet ~12% smaller than the first pass and seated lower on the neck
-  const HELMET_FIT = new THREE.Matrix4().makeTranslation(0, -0.024, 0.006).multiply(new THREE.Matrix4().makeScale(0.88, 0.88, 0.88));
-  const helmetPaint: Painter = (p, n) => {
-    const ly = p.y - hc[1], lz = p.z - hc[2], ax = Math.abs(p.x);
-    if (lz < -0.04 && ly > -0.05 && ly < 0.052 && n.z < -0.1) return COL.visor; // wrap-around visor
-    if (ax < 0.028 && ly > 0.052) return lz < 0.1 ? COL.silver : COL.black; // crown panel
-    if (ax >= 0.028 && ax < 0.04 && ly > 0.052 && lz < 0.07) return COL.cobalt; // crown accent lines
-    if (Math.abs(n.x) > 0.55 && ly > -0.02 && ly < 0.05 && lz > -0.03) return COL.silver; // side blade
-    if (Math.abs(n.x) > 0.55 && ly >= 0.05 && ly < 0.066 && lz > -0.01) return COL.cobalt;
-    return COL.black;
-  };
-  {
-    const hg = loft([
-      { c: [0, 0.06, -0.188], ru: 0.03, rv: 0.02, rvN: 0.02 },
-      { c: [0, 0.075, -0.168], ru: 0.075, rv: 0.05, rvN: 0.062 },
-      { c: [0, 0.105, -0.13], ru: 0.105, rv: 0.086, rvN: 0.1 },
-      { c: [0, 0.115, -0.06], ru: 0.119, rv: 0.11, rvN: 0.124 },
-      { c: [0, 0.12, 0.03], ru: 0.121, rv: 0.105, rvN: 0.128 },
-      { c: [0, 0.126, 0.11], ru: 0.107, rv: 0.09, rvN: 0.114 },
-      { c: [0, 0.135, 0.16], ru: 0.074, rv: 0.06, rvN: 0.078 },
-      { c: [0, 0.14, 0.186], ru: 0.024, rv: 0.02, rvN: 0.024 },
-    ], helmetPaint, 10, 2);
-    const g = toCreasedNormals(hg, 0.42);
-    g.applyMatrix4(HELMET_FIT);
-    g.setIndex([...Array(g.attributes.position.count).keys()]);
-    add(g, shell, head, ['Head']);
-  }
-  // cyan forehead light bar + rear light bar, small rear spoiler, top vents
-  for (const [y, z, rx, w] of [[0.18, -0.143, 0.62, 0.06], [0.172, 0.158, -0.6, 0.064]]) {
-    const bar = new THREE.BoxGeometry(w, 0.011, 0.012);
-    bar.rotateX(rx);
-    bar.translate(0, y, z);
-    bar.computeVertexNormals();
-    bar.applyMatrix4(HELMET_FIT);
-    paintGeo(bar, solid(COL.cobalt));
-    add(bar, mats.riderGlow, head, ['Head']);
-  }
-  add(ellipsoid([0, 0.236, 0.12], [0.05, 0.012, 0.055], solid(COL.black), { w: 16, h: 8 }).applyMatrix4(HELMET_FIT), shell, head, ['Head']);
-  for (const sx of [-1, 1]) {
-    const vent = ellipsoid([0, 0, 0], [0.012, 0.006, 0.03], solid(COL.graphite), { w: 10, h: 6 });
-    vent.rotateX(0.35);
-    vent.translate(sx * 0.03, 0.238, -0.06);
-    vent.applyMatrix4(HELMET_FIT);
-    add(vent, shell, head, ['Head']);
-  }
+  // ---- HELMET: detailed full-face race helmet (RiderHelmet.ts), rigid on the Head bone
+  for (const { geo, mat } of buildHelmetParts(mats, LOD_SCALE)) add(geo, mat, head, ['Head']);
+
+  // ------------------------------------------------------------------ bake the suit livery atlas
+  bakeSuitAtlas(parts, suit);
 
   // ------------------------------------------------------------------ merge by material
   const groups = new Map<THREE.Material, THREE.BufferGeometry[]>();
   for (const { geo, mat } of parts) {
+    if (!geo.index) geo.setIndex([...Array(geo.attributes.position.count).keys()]);
     for (const k of Object.keys(geo.attributes)) {
       if (!['position', 'normal', 'uv', 'color', 'skinIndex', 'skinWeight'].includes(k)) geo.deleteAttribute(k);
     }
@@ -528,4 +551,106 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
   riderMesh.bind(skeleton, new THREE.Matrix4());
   LOD_SCALE = 1;
   return { riderMesh, skeleton, bones, pelvis };
+}
+
+// ------------------------------------------------------------------------------- suit livery atlas
+/**
+ * Every lofted suit part gets its own rectangle in one atlas; its painter is evaluated per texel on
+ * the analytic surface, so stripes / plates / seams get crisp edges instead of the staircase you get
+ * from colouring a few hundred vertices. A second map carries roughness (G) and metalness (B):
+ * silver plates read as brushed metal, cobalt as satin, the rest as leather.
+ */
+const ATLAS = 1024, PAD = 3, DENSITY = 560; // px per metre
+let atlasCache: { color: THREE.CanvasTexture; orm: THREE.CanvasTexture; rects: { x: number; y: number; w: number; h: number }[] } | null = null;
+
+function bakeSuitAtlas(parts: { geo: THREE.BufferGeometry; mat: THREE.Material }[], suit: THREE.MeshPhysicalMaterial) {
+  const baked = parts.filter((pt) => pt.mat === suit && pt.geo.userData.surf);
+  const sizes = baked.map(({ geo }) => {
+    const sf = geo.userData.surf as Surface;
+    return { w: Math.max(16, Math.min(512, Math.round(sf.circ * DENSITY))), h: Math.max(16, Math.min(512, Math.round(sf.len * DENSITY))) };
+  });
+  // white texel block (top-left) for suit parts that are not baked
+  const WHITE = { x: 0, y: 0, w: 8, h: 8 };
+  if (!atlasCache || atlasCache.rects.length !== baked.length) {
+    // shelf packing, tallest first
+    const order = sizes.map((_, i) => i).sort((a, b) => sizes[b].h - sizes[a].h);
+    const rects: { x: number; y: number; w: number; h: number }[] = [];
+    let x = WHITE.w + PAD * 2, y = 0, shelf = 0;
+    for (const i of order) {
+      const { w, h } = sizes[i];
+      if (x + w + PAD * 2 > ATLAS) { x = 0; y += shelf; shelf = 0; }
+      rects[i] = { x: x + PAD, y: y + PAD, w, h };
+      x += w + PAD * 2;
+      shelf = Math.max(shelf, h + PAD * 2);
+    }
+    const H = ATLAS;
+    const cv = document.createElement('canvas'), cv2 = document.createElement('canvas');
+    cv.width = cv2.width = ATLAS;
+    cv.height = cv2.height = H;
+    const g = cv.getContext('2d')!, g2 = cv2.getContext('2d')!;
+    const img = g.createImageData(ATLAS, H), orm = g2.createImageData(ATLAS, H);
+    const put = (px: number, py: number, c: THREE.Color) => {
+      if (px < 0 || py < 0 || px >= ATLAS || py >= H) return;
+      const o = (py * ATLAS + px) * 4;
+      const r = c.r, gg = c.g, b = c.b;
+      // linear -> sRGB bytes
+      const enc = (v: number) => Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055));
+      img.data[o] = enc(r); img.data[o + 1] = enc(gg); img.data[o + 2] = enc(b); img.data[o + 3] = 255;
+      const silver = r > 0.25 && gg > 0.25 && b > 0.25;
+      const blue = b > 0.3 && r < 0.12;
+      orm.data[o] = 255;
+      orm.data[o + 1] = Math.round(255 * (silver ? 0.4 : blue ? 0.42 : 0.62));
+      orm.data[o + 2] = Math.round(255 * (silver ? 0.32 : blue ? 0.2 : 0.0));
+      orm.data[o + 3] = 255;
+    };
+    const white = new THREE.Color(1, 1, 1);
+    for (let py = 0; py < WHITE.h + PAD; py++) for (let px = 0; px < WHITE.w + PAD; px++) put(px, py, white);
+    // the white block must read as leather in the ORM map
+    for (let py = 0; py < WHITE.h + PAD; py++) for (let px = 0; px < WHITE.w + PAD; px++) { const o = (py * ATLAS + px) * 4; orm.data[o + 1] = 158; orm.data[o + 2] = 0; }
+    const P = new THREE.Vector3(), N = new THREE.Vector3();
+    baked.forEach(({ geo }, i) => {
+      const sf = geo.userData.surf as Surface, R = rects[i];
+      for (let py = -PAD; py < R.h + PAD; py++) {
+        const vv = Math.min(1, Math.max(0, (py + 0.5) / R.h));
+        for (let px = -PAD; px < R.w + PAD; px++) {
+          const uu = (((px + 0.5) / R.w) % 1 + 1) % 1;
+          sf.evalAt(uu, vv, P, N);
+          put(R.x + px, R.y + py, sf.paint(P, N, vv));
+        }
+      }
+    });
+    g.putImageData(img, 0, 0);
+    g2.putImageData(orm, 0, 0);
+    const mk = (c: HTMLCanvasElement, srgb: boolean) => {
+      const t = new THREE.CanvasTexture(c);
+      t.flipY = false;
+      t.anisotropy = 8;
+      if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    };
+    atlasCache = { color: mk(cv, true), orm: mk(cv2, false), rects };
+  }
+  const { rects } = atlasCache;
+  // remap uvs + neutral vertex colour on baked parts; unbaked suit parts sample the white block
+  baked.forEach(({ geo }, i) => {
+    const R = rects[i], uv = geo.attributes.uv as THREE.BufferAttribute;
+    for (let k = 0; k < uv.count; k++) {
+      uv.setXY(k, (R.x + uv.getX(k) * R.w) / ATLAS, (R.y + uv.getY(k) * R.h) / ATLAS);
+    }
+    const col = geo.attributes.color as THREE.BufferAttribute;
+    for (let k = 0; k < col.count; k++) col.setXYZ(k, 1, 1, 1);
+  });
+  for (const pt of parts) {
+    if (pt.mat !== suit || pt.geo.userData.surf) continue;
+    const n = pt.geo.attributes.position.count;
+    const a = new Float32Array(n * 2);
+    for (let k = 0; k < n; k++) { a[k * 2] = (WHITE.w * 0.5) / ATLAS; a[k * 2 + 1] = (WHITE.h * 0.5) / ATLAS; }
+    pt.geo.setAttribute('uv', new THREE.BufferAttribute(a, 2));
+  }
+  suit.map = atlasCache.color;
+  suit.roughnessMap = atlasCache.orm;
+  suit.metalnessMap = atlasCache.orm;
+  suit.roughness = 1;
+  suit.metalness = 1;
+  suit.needsUpdate = true;
 }
