@@ -159,8 +159,10 @@ export function loft(keys: Sec[], paint: Painter, radial = 22, sub = 4, uAxis: V
     const L = (x: number, y: number) => x + (y - x) * t;
     const fu = frames[r0].u, fu1 = frames[r0 + 1].u, fv = frames[r0].v, fv1 = frames[r0 + 1].v;
     const ang = uu * Math.PI * 2, cs = Math.cos(ang), sn = Math.sin(ang), e = 2 / L(A.p, B.p);
-    const cu = Math.sign(cs) * Math.pow(Math.abs(cs), e) * (cs >= 0 ? L(A.ru, B.ru) : L(A.ruN, B.ruN));
-    const sv = Math.sign(sn) * Math.pow(Math.abs(sn), e) * (sn >= 0 ? L(A.rv, B.rv) : L(A.rvN, B.rvN));
+    const pc = e === 1 ? cs : Math.sign(cs) * Math.pow(Math.abs(cs), e);
+    const ps = e === 1 ? sn : Math.sign(sn) * Math.pow(Math.abs(sn), e);
+    const cu = pc * (cs >= 0 ? L(A.ru, B.ru) : L(A.ruN, B.ruN));
+    const sv = ps * (sn >= 0 ? L(A.rv, B.rv) : L(A.rvN, B.rvN));
     out.set(L(A.c.x, B.c.x), L(A.c.y, B.c.y), L(A.c.z, B.c.z));
     const cx = out.x, cy = out.y, cz = out.z;
     out.x += L(fu.x, fu1.x) * cu + L(fv.x, fv1.x) * sv;
@@ -171,6 +173,7 @@ export function loft(keys: Sec[], paint: Painter, radial = 22, sub = 4, uAxis: V
   const q1 = new THREE.Vector3(), q2 = new THREE.Vector3(), d1 = new THREE.Vector3(), d2 = new THREE.Vector3();
   const surf: Surface = {
     paint, len, circ,
+    point,
     evalAt(uu, vv, outP, outN) {
       const c = point(uu, vv, outP);
       point(uu + 0.002, vv, q1);
@@ -191,6 +194,8 @@ export interface Surface {
   paint: Painter;
   len: number;
   circ: number;
+  /** surface point at (u, v); returns the ring centre (for outward orientation) */
+  point(u: number, v: number, out: THREE.Vector3): readonly [number, number, number];
   evalAt(u: number, v: number, outP: THREE.Vector3, outN: THREE.Vector3): void;
 }
 
@@ -336,7 +341,10 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
       else if (p.y > 0.97 && p.y < 1.21 && Math.abs(rib) < 0.022) c = COL.cobalt;
       else if (p.y > 0.97 && p.y < 1.21 && near(Math.abs(rib) - 0.03)) c = SEAM;
       else if (p.y > 0.855 && p.y < 0.935 && Math.abs(kid) < 0.02 && backN > 0.3) c = COL.silver;
-      else if (near(p.y - 0.955) || (p.y < 0.99 && near(ax)) || near(p.y - 0.84)) c = SEAM;
+      // seat sliders: slanted silver panels low on the seat, so the back of the hips is not one black blob
+      else if (p.y > 0.74 && p.y < 0.805 && Math.abs(ax - (0.095 - (p.y - 0.74) * 0.3)) < 0.015 && backN > 0.25) c = COL.silver;
+      else if (p.y > 0.74 && p.y < 0.805 && near(Math.abs(ax - (0.095 - (p.y - 0.74) * 0.3)) - 0.022) && backN > 0.25) c = SEAM;
+      else if ((near(p.y - 0.955) && ax < 0.13) || (p.y < 0.99 && p.y > 0.95 && near(ax))) c = SEAM;
       else if (p.y > 0.96 && p.y < 1.05 && near(ax - 0.05 - (1.05 - p.y) * 0.6)) c = SEAM;
     }
     // cobalt side panel along the ribs (side view), with a seam above it
@@ -351,9 +359,9 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     loft(
       [
         { c: [0, 0.69, 0.25], ru: 0.08, rv: 0.05, rvN: 0.05 },
-        { c: [0, 0.74, 0.24], ru: 0.136, rv: 0.076, rvN: 0.08, p: 2.2 },
-        { c: [0, 0.83, 0.21], ru: 0.142, rv: 0.08, rvN: 0.084, p: 2.2 },
-        { c: [0, 0.93, 0.165], ru: 0.142, rv: 0.085, rvN: 0.084, p: 2.2 },
+        { c: [0, 0.74, 0.24], ru: 0.124, rv: 0.07, rvN: 0.078, p: 2.2 },
+        { c: [0, 0.83, 0.21], ru: 0.13, rv: 0.074, rvN: 0.082, p: 2.2 },
+        { c: [0, 0.93, 0.165], ru: 0.136, rv: 0.082, rvN: 0.084, p: 2.2 },
         { c: [0, 1.04, 0.11], ru: 0.156, rv: 0.09, rvN: 0.096, p: 2.2 },
         { c: [0, 1.14, 0.06], ru: 0.18, rv: 0.11, rvN: 0.104, p: 2.3 },
         { c: [0, 1.212, 0.035], ru: 0.2, rv: 0.1, rvN: 0.092, p: 2.5 },
@@ -560,8 +568,8 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
  * from colouring a few hundred vertices. A second map carries roughness (G) and metalness (B):
  * silver plates read as brushed metal, cobalt as satin, the rest as leather.
  */
-const ATLAS = 1024, PAD = 3, DENSITY = 560; // px per metre
-let atlasCache: { color: THREE.CanvasTexture; orm: THREE.CanvasTexture; rects: { x: number; y: number; w: number; h: number }[] } | null = null;
+const ATLAS = 1024, PAD = 3, DENSITY = 480; // px per metre (~2 mm per texel)
+let atlasCache: { color: THREE.DataTexture; orm: THREE.DataTexture; rects: { x: number; y: number; w: number; h: number }[] } | null = null;
 
 function bakeSuitAtlas(parts: { geo: THREE.BufferGeometry; mat: THREE.Material }[], suit: THREE.MeshPhysicalMaterial) {
   const baked = parts.filter((pt) => pt.mat === suit && pt.geo.userData.surf);
@@ -584,51 +592,79 @@ function bakeSuitAtlas(parts: { geo: THREE.BufferGeometry; mat: THREE.Material }
       shelf = Math.max(shelf, h + PAD * 2);
     }
     const H = ATLAS;
-    const cv = document.createElement('canvas'), cv2 = document.createElement('canvas');
-    cv.width = cv2.width = ATLAS;
-    cv.height = cv2.height = H;
-    const g = cv.getContext('2d')!, g2 = cv2.getContext('2d')!;
-    const img = g.createImageData(ATLAS, H), orm = g2.createImageData(ATLAS, H);
+    // plain RGBA buffers -> DataTexture (works the same in the browser and the TikTok native build)
+    const img = { data: new Uint8Array(ATLAS * H * 4) }, orm = { data: new Uint8Array(ATLAS * H * 4) };
+    // painters return a handful of shared colours: encode each one once (sRGB bytes + roughness/metal)
+    const enc = (v: number) => Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055));
+    const lut = new Map<THREE.Color, Uint8Array>();
+    const bytes = (c: THREE.Color) => {
+      let e = lut.get(c);
+      if (!e) {
+        const silver = c.r > 0.25 && c.g > 0.25 && c.b > 0.25;
+        const blue = c.b > 0.3 && c.r < 0.12;
+        e = Uint8Array.of(enc(c.r), enc(c.g), enc(c.b), Math.round(255 * (silver ? 0.4 : blue ? 0.42 : 0.62)), Math.round(255 * (silver ? 0.32 : blue ? 0.2 : 0.0)));
+        if (lut.size < 4096) lut.set(c, e);
+      }
+      return e;
+    };
     const put = (px: number, py: number, c: THREE.Color) => {
       if (px < 0 || py < 0 || px >= ATLAS || py >= H) return;
-      const o = (py * ATLAS + px) * 4;
-      const r = c.r, gg = c.g, b = c.b;
-      // linear -> sRGB bytes
-      const enc = (v: number) => Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055));
-      img.data[o] = enc(r); img.data[o + 1] = enc(gg); img.data[o + 2] = enc(b); img.data[o + 3] = 255;
-      const silver = r > 0.25 && gg > 0.25 && b > 0.25;
-      const blue = b > 0.3 && r < 0.12;
-      orm.data[o] = 255;
-      orm.data[o + 1] = Math.round(255 * (silver ? 0.4 : blue ? 0.42 : 0.62));
-      orm.data[o + 2] = Math.round(255 * (silver ? 0.32 : blue ? 0.2 : 0.0));
-      orm.data[o + 3] = 255;
+      const o = (py * ATLAS + px) * 4, e = bytes(c);
+      img.data[o] = e[0]; img.data[o + 1] = e[1]; img.data[o + 2] = e[2]; img.data[o + 3] = 255;
+      orm.data[o] = 255; orm.data[o + 1] = e[3]; orm.data[o + 2] = e[4]; orm.data[o + 3] = 255;
     };
     const white = new THREE.Color(1, 1, 1);
     for (let py = 0; py < WHITE.h + PAD; py++) for (let px = 0; px < WHITE.w + PAD; px++) put(px, py, white);
     // the white block must read as leather in the ORM map
     for (let py = 0; py < WHITE.h + PAD; py++) for (let px = 0; px < WHITE.w + PAD; px++) { const o = (py * ATLAS + px) * 4; orm.data[o + 1] = 158; orm.data[o + 2] = 0; }
-    const P = new THREE.Vector3(), N = new THREE.Vector3();
+    // one surface evaluation per texel: positions for the rect (+1 row/col) are sampled once and the
+    // normal comes from the neighbouring samples (3x cheaper than finite differences per texel)
+    const P = new THREE.Vector3(), N = new THREE.Vector3(), Q = new THREE.Vector3();
+    const e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
     baked.forEach(({ geo }, i) => {
       const sf = geo.userData.surf as Surface, R = rects[i];
-      for (let py = -PAD; py < R.h + PAD; py++) {
+      const cols = R.w + PAD * 2 + 1, rows = R.h + PAD * 2 + 1;
+      const pos = new Float32Array(cols * rows * 3), ctr = new Float32Array(rows * 3), vs = new Float32Array(rows);
+      for (let r = 0; r < rows; r++) {
+        const py = r - PAD;
         const vv = Math.min(1, Math.max(0, (py + 0.5) / R.h));
-        for (let px = -PAD; px < R.w + PAD; px++) {
-          const uu = (((px + 0.5) / R.w) % 1 + 1) % 1;
-          sf.evalAt(uu, vv, P, N);
-          put(R.x + px, R.y + py, sf.paint(P, N, vv));
+        vs[r] = vv;
+        for (let c = 0; c < cols; c++) {
+          const uu = ((((c - PAD) + 0.5) / R.w) % 1 + 1) % 1;
+          const cc = sf.point(uu, vv, Q);
+          const o = (r * cols + c) * 3;
+          pos[o] = Q.x; pos[o + 1] = Q.y; pos[o + 2] = Q.z;
+          if (c === 0) { ctr[r * 3] = cc[0]; ctr[r * 3 + 1] = cc[1]; ctr[r * 3 + 2] = cc[2]; }
+        }
+      }
+      for (let r = 0; r < rows - 1; r++) {
+        for (let c = 0; c < cols - 1; c++) {
+          const o = (r * cols + c) * 3;
+          P.set(pos[o], pos[o + 1], pos[o + 2]);
+          e1.set(pos[o + 3] - P.x, pos[o + 4] - P.y, pos[o + 5] - P.z);
+          // along v: next row, or the previous one at a clamped end row
+          let o2 = o + cols * 3, sgn = 1;
+          if (vs[r + 1] === vs[r]) { o2 = Math.max(0, o - cols * 3); sgn = -1; }
+          e2.set((pos[o2] - P.x) * sgn, (pos[o2 + 1] - P.y) * sgn, (pos[o2 + 2] - P.z) * sgn);
+          N.crossVectors(e1, e2);
+          if (N.lengthSq() < 1e-14) N.set(P.x - ctr[r * 3], P.y - ctr[r * 3 + 1], P.z - ctr[r * 3 + 2]);
+          N.normalize();
+          if (N.x * (P.x - ctr[r * 3]) + N.y * (P.y - ctr[r * 3 + 1]) + N.z * (P.z - ctr[r * 3 + 2]) < 0) N.negate();
+          put(R.x + c - PAD, R.y + r - PAD, sf.paint(P, N, vs[r]));
         }
       }
     });
-    g.putImageData(img, 0, 0);
-    g2.putImageData(orm, 0, 0);
-    const mk = (c: HTMLCanvasElement, srgb: boolean) => {
-      const t = new THREE.CanvasTexture(c);
-      t.flipY = false;
+    const mk = (d: Uint8Array, srgb: boolean) => {
+      const t = new THREE.DataTexture(d, ATLAS, H, THREE.RGBAFormat);
+      t.magFilter = THREE.LinearFilter;
+      t.minFilter = THREE.LinearMipmapLinearFilter;
+      t.generateMipmaps = true;
       t.anisotropy = 8;
       if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+      t.needsUpdate = true;
       return t;
     };
-    atlasCache = { color: mk(cv, true), orm: mk(cv2, false), rects };
+    atlasCache = { color: mk(img.data, true), orm: mk(orm.data, false), rects };
   }
   const { rects } = atlasCache;
   // remap uvs + neutral vertex colour on baked parts; unbaked suit parts sample the white block

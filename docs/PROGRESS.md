@@ -4,6 +4,15 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 
 ---
 
+## 2026-10-29 — Trau chuốt hero 3D để đưa vào game (branch `feat/hero-3d`)
+
+- Texture mũ và atlas bộ đồ chuyển sang `THREE.DataTexture` (mảng byte thuần), không còn dùng `createImageData/putImageData` của canvas 2D → chạy được cả bản web lẫn bản TikTok native (canvas của adapter có thể không có ImageData).
+- Nướng atlas nhanh hơn: mỗi texel chỉ 1 lần tính điểm bề mặt (pháp tuyến lấy từ điểm lân cận), mã màu sRGB tính sẵn theo màu, bỏ `Math.pow` khi tiết diện là ellipse, mũ dùng bảng cos/sin. Mật độ atlas 480 px/m. Dựng người lái lần đầu (gồm nướng texture) ~220 ms trên desktop, các lần sau ~25 ms.
+- Mũ: dải bạc nhìn ngang cong theo spline (dốc từ cằm, vòng qua tai, rủ xuống ở đuôi), đuôi gió thấp và tối hơn, gân bạc mảnh lại.
+- Người: hông/mông gọn hơn, khuỷu tay khép xuống, thêm tấm bạc ở mông (không còn một khối đen khi nhìn từ camera game), bỏ đường may chữ thập ở mông.
+- Kiểm tra ở góc camera game (LOD1) các tư thế chạy thẳng / cúi / nghiêng. Tam giác không đổi: LOD0 ~70k, LOD1 ~47k, LOD2 ~33k. Typecheck 15 lỗi có sẵn.
+- Chưa làm: npm test / build TikTok trong phiên cloud (npm bị chặn) → cần chạy `npm run typecheck && npm test && npm run build:tiktok && npm run check:tiktok` trên máy trước khi merge.
+
 ## 2026-10-27 — Mũ bảo hiểm chi tiết + livery bộ đồ nướng texture (branch `feat/hero-3d`)
 
 - `src/render/RiderHelmet.ts` (mới): mũ full-face riêng, gắn cứng vào xương Head. Vỏ có cằm nhô ra, livery vẽ theo từng texel trong không gian 3D (không lỗi đường nối): mảng bạc trán rộng hẹp dần ra sau có viền xanh, đường V xanh, swoosh bạc lớn từ cằm lên đuôi, viền xanh quanh kính, mảng xanh sau dưới. Kính là khối dày riêng (cạnh cong), viền bạc trên, đèn cyan giữa trán + 2 vạch góc kính, 2 thanh cyan sau gáy, chốt kính nhỏ, đuôi gió bám theo vỏ, khe gió trên/cằm, đệm cổ. Mọi chi tiết gắn lên vỏ dùng `shellBlock` (khối bám mặt cầu đã biến dạng) nên không còn lơ lửng.

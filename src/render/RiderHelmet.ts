@@ -55,34 +55,39 @@ const VISOR = { half: 0.84, top: 1.14, bottom: 1.7 };
  * phi/theta space: no seam artefacts, constant physical stripe widths, and shapes defined the way the
  * reference reads them (front / side / back views).
  */
-let tex: THREE.CanvasTexture | null = null;
-function helmetTexture(): THREE.CanvasTexture {
+let tex: THREE.DataTexture | null = null;
+function helmetTexture(): THREE.DataTexture {
   if (tex) return tex;
-  const W = 1536, H = 768;
-  const cv = document.createElement('canvas');
-  cv.width = W;
-  cv.height = H;
-  const g = cv.getContext('2d')!;
-  const img = g.createImageData(W, H);
+  // plain RGBA buffer -> DataTexture: no 2D canvas needed (the TikTok native canvas may not provide ImageData)
+  const W = 1024, H = 512;
+  const data = new Uint8Array(W * H * 4);
   const BLACK = [16, 19, 24], GLOSS = [26, 30, 37], SILVER = [205, 211, 220], SILVER_D = [140, 148, 160],
     BLUE = [28, 86, 255], RUBBER = [34, 36, 40];
   const smooth = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   // side swoosh centre line in side projection (z back, y up), chin -> temple -> rear
-  const SW: [number, number][] = [[-0.92, -0.62], [-0.62, -0.36], [-0.3, -0.12], [0.1, 0.04], [0.5, 0.12], [0.95, 0.16]];
+  // rises steeply from the chin along the visor's lower edge, sweeps back over the ear, droops at the rear
+  const SW: [number, number][] = [[-1.0, -0.78], [-0.82, -0.52], [-0.58, -0.24], [-0.25, -0.02], [0.15, 0.08], [0.55, 0.05], [0.98, -0.08]];
+  const cr = (a: number, b: number, c: number, d: number, t: number) =>
+    0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t);
   const swY = (z: number) => {
     if (z <= SW[0][0]) return SW[0][1];
     for (let k = 0; k < SW.length - 1; k++) {
-      const [z0, y0] = SW[k], [z1, y1] = SW[k + 1];
-      if (z <= z1) return y0 + ((y1 - y0) * (z - z0)) / (z1 - z0);
+      const [z0, y1] = SW[k], [z1, y2] = SW[k + 1];
+      if (z <= z1) {
+        const y0 = SW[Math.max(0, k - 1)][1], y3 = SW[Math.min(SW.length - 1, k + 2)][1];
+        return cr(y0, y1, y2, y3, (z - z0) / (z1 - z0));
+      }
     }
     return SW[SW.length - 1][1];
   };
+  const COS = new Float32Array(W), SIN = new Float32Array(W);
+  for (let px = 0; px < W; px++) { const phi = ((px + 0.5) / W) * Math.PI * 2; COS[px] = Math.cos(phi); SIN[px] = Math.sin(phi); }
   for (let py = 0; py < H; py++) {
     const th = ((py + 0.5) / H) * SHELL_THETA;
     const st = Math.sin(th), y = Math.cos(th);
     for (let px = 0; px < W; px++) {
       const phi = ((px + 0.5) / W) * Math.PI * 2;
-      const x = -Math.cos(phi) * st, z = Math.sin(phi) * st;
+      const x = -COS[px] * st, z = SIN[px] * st;
       const ax = Math.abs(x), f = -z;
       let c = BLACK;
       // subtle two-tone: glossier black on the upper half
@@ -121,17 +126,21 @@ function helmetTexture(): THREE.CanvasTexture {
       if (f > 0.85 && y < -0.62 && y > -0.74 && ax < 0.12) c = SILVER_D;
       // --- bottom rubber edge
       if (th > 2.3) c = RUBBER;
-      const o = (py * W + px) * 4;
-      img.data[o] = c[0];
-      img.data[o + 1] = c[1];
-      img.data[o + 2] = c[2];
-      img.data[o + 3] = 255;
+      const o = ((H - 1 - py) * W + px) * 4; // DataTexture row 0 = v 0 = bottom of the shell
+      data[o] = c[0];
+      data[o + 1] = c[1];
+      data[o + 2] = c[2];
+      data[o + 3] = 255;
     }
   }
-  g.putImageData(img, 0, 0);
-  tex = new THREE.CanvasTexture(cv);
+  tex = new THREE.DataTexture(data, W, H, THREE.RGBAFormat);
   tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.wrapS = THREE.RepeatWrapping;
   tex.anisotropy = 8;
+  tex.needsUpdate = true;
   return tex;
 }
 
@@ -229,15 +238,15 @@ export function buildHelmetParts(mats: BikeRiderMaterials, detail = 1): { geo: T
   // rear spoiler: follows the crown, thin at the front, raised trailing lip over the back
   out.push({
     geo: withColor(
-      shellBlock((u, t) => [BACK + u * (0.42 + 0.3 * t), 0.42 + t * 0.62], (t) => 0.02 + 0.07 * t * t, 1.002, 4, seg(10)),
-      0x1c2027,
+      shellBlock((u, t) => [BACK + u * (0.42 + 0.3 * t), 0.42 + t * 0.62], (t) => 0.014 + 0.045 * t * t, 1.002, 4, seg(10)),
+      0x15181e,
     ),
     mat: mats.riderSuit,
   });
   // silver strakes on the spoiler
   for (const s of [-1, 1]) {
     out.push({
-      geo: withColor(shellBlock((u, t) => [BACK + s * (0.22 + 0.17 * t) + u * 0.06, 0.48 + t * 0.56], (t) => 0.03 + 0.075 * t * t, 1.004, 1, 8), 0xc9cfd8),
+      geo: withColor(shellBlock((u, t) => [BACK + s * (0.24 + 0.17 * t) + u * 0.035, 0.5 + t * 0.54], (t) => 0.018 + 0.048 * t * t, 1.004, 1, 8), 0xaab2be),
       mat: mats.riderArmor,
     });
   }

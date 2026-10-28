@@ -2104,10 +2104,10 @@ export function applyBikeRiderPose(rig: {
   // Elbow pole vectors in chassis frame, transformed to world direction
   const elbowTuck = lowTuck * 0.45 + downSlide * 0.25;
   _poleL
-    .set(-0.9 + elbowTuck * 0.5, -0.12 - elbowTuck * 0.3, 0.32)
+    .set(-0.72 + elbowTuck * 0.4, -0.42 - elbowTuck * 0.25, 0.3)
     .transformDirection(chassisMatWorld);
   _poleR
-    .set(0.9 - elbowTuck * 0.5, -0.12 - elbowTuck * 0.3, 0.32)
+    .set(0.72 - elbowTuck * 0.4, -0.42 - elbowTuck * 0.25, 0.3)
     .transformDirection(chassisMatWorld);
 
   solveTwoBoneIK(
