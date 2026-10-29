@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HS TikTok SDK — HTML5 sample</title>
+<style>
+  :root { color-scheme: light dark; --bg:#fff; --fg:#111; --muted:#666; --line:#ddd; --accent:#fe2c55; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141414; --fg:#eee; --muted:#999; --line:#333; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--fg);
+         font:14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+  h1 { font-size:16px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 16px; font-size:13px; }
+  .wrap { display:grid; gap:16px; grid-template-columns: minmax(280px, 380px) 1fr; align-items:start; }
+  @media (max-width: 720px) { .wrap { grid-template-columns: 1fr; } }
+  fieldset { border:1px solid var(--line); border-radius:8px; margin:0 0 12px; padding:12px; }
+  legend { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.06em; padding:0 4px; }
+  button { font:inherit; padding:7px 11px; margin:0 6px 6px 0; border:1px solid var(--line);
+           border-radius:6px; background:transparent; color:var(--fg); cursor:pointer; }
+  button:hover { border-color:var(--accent); color:var(--accent); }
+  button:disabled { opacity:.4; cursor:default; }
+  label { display:block; margin:6px 0; color:var(--muted); font-size:13px; }
+  select, input { font:inherit; padding:4px 6px; border:1px solid var(--line); border-radius:5px;
+                  background:transparent; color:var(--fg); }
+  #log { height:70vh; overflow:auto; border:1px solid var(--line); border-radius:8px;
+         padding:10px; margin:0; white-space:pre-wrap; word-break:break-word;
+         font:12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .state { display:flex; gap:14px; flex-wrap:wrap; color:var(--muted); font-size:12px; margin-bottom:8px; }
+  .state b { color:var(--fg); font-weight:600; }
+  .evt { color:var(--accent); }
+  .err { color:#d33; }
+  .dim { color:var(--muted); }
+</style>
+</head>
+<body>
+
+<h1>HS TikTok SDK — HTML5 sample</h1>
+<p class="sub">
+  Runs the full SDK against a fake <code>tt</code> global, so it works in any desktop browser.
+  Backend calls are stubbed too — see <code>index.html</code> for the stub.
+</p>
+
+<div class="wrap">
+  <div>
+    <div class="state">
+      <span>host <b id="s-host">—</b></span>
+      <span>mode <b id="s-mode">—</b></span>
+      <span>auth <b id="s-auth">—</b></span>
+      <span>openId <b id="s-openid">—</b></span>
+    </div>
+
+    <fieldset>
+      <legend>Auth</legend>
+      <button data-act="login">login()</button>
+      <button data-act="mockLogin">mockLogin()</button>
+      <button data-act="clearSession">clearSession()</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>IAP</legend>
+      <button data-act="shop">getShopItems()</button>
+      <button data-act="buy">buyProduct()</button>
+      <button data-act="orders">getOrders()</button>
+      <button data-act="pending">checkPendingRewards()</button>
+      <label><input type="checkbox" id="failPay"> make the pay UI fail</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Ads</legend>
+      <button data-act="adRemote">showAdsRemote('level_end')</button>
+      <button data-act="adReward">showAd(rewarded)</button>
+      <button data-act="adInter">showAd(interstitial)</button>
+      <button data-act="limits">getRateLimits()</button>
+      <label>outcome
+        <select id="adOutcome">
+          <option value="close">watched</option>
+          <option value="error">error</option>
+          <option value="silent">silent (triggers the 11004 heuristic)</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="adIsEnded" checked> watched to the end</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Sync</legend>
+      <button data-act="dirty">mark dirty</button>
+      <button data-act="syncNow">syncNow()</button>
+      <button data-act="flush">simulate backgrounding</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>Missions</legend>
+      <button data-act="entrance">EntranceMission</button>
+      <button data-act="shortcut">ShortcutMission</button>
+    </fieldset>
+
+    <button data-act="clear">clear log</button>
+  </div>
+
+  <pre id="log"></pre>
+</div>
+
+<script src="./tt-shim.js"></script>
+<script src="../hs-sdk.min.js"></script>
+<script>
+(function () {
+  var log = document.getElementById('log');
+
+  function write(msg, cls) {
+    var line = document.createElement('div');
+    if (cls) line.className = cls;
+    line.textContent = new Date().toTimeString().slice(0, 8) + '  ' + msg;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+  }
+  function show(label, value) {
+    write(label + '  ' + JSON.stringify(value));
+  }
+  window.__shimLog = function (m) { write(m, 'dim'); };
+
+  // ─── Stub backend ───
+  // The SDK is server-authoritative, so the sample needs somewhere for its
+  // requests to land. Swap this out to point at a real gateway.
+  var ORDER_ID = 100;
+  var ROUTES = {
+    '/api/login': function () {
+      return {
+        success: true, session_token: 'sess_sample', open_id: 'open_sample',
+        profile_data: '{"level":4,"coins":250}', last_updated_timestamp: Date.now(),
+        aps: [{ id: 'rewarded_1', type: 'reward' }, { id: 'inter_1', type: 'interstitial' }],
+        iaa_config: JSON.stringify({
+          placements: [{ label: 'level_end', ads: [{ id: 'rewarded_1', config: { cooldown: 30 } }, { id: 'inter_1' }] }]
+        }),
+        pending_rewards: [{ order_id: 9, product_id: 55, name: 'recovered', rewards: [{ type: 'gold', amount: 25, value: false }] }]
+      };
+    },
+    '/api/shop/items': function () {
+      return { success: true, items: [
+        { id: 1, product_id: 'hint_pack_15', name: '15 Hints', description: '', beans_cost: 30,
+          rewards: [{ type: 'hints', amount: 15, value: false }] }
+      ] };
+    },
+    '/api/create_order': function () { return { success: true, trade_order_id: 'TT_' + (++ORDER_ID), order_id: ORDER_ID }; },
+    '/api/check_order': function () {
+      return { success: true, isProcessed: true, status: 'PAID', product_id: 55,
+               rewards: [{ type: 'hints', amount: 15, value: false }] };
+    },
+    '/api/orders': function () { return { success: true, orders: [] }; },
+    '/api/pending_rewards': function () { return { success: true, pending_count: 0, rewards: [] }; },
+    '/api/sync': function () { return { success: true, last_updated_timestamp: Date.now() }; }
+  };
+
+  window.fetch = function (url, init) {
+    var path = new URL(url).pathname;
+    write('POST ' + path + '  ' + init.body, 'dim');
+    var handler = ROUTES[path];
+    var body = handler ? handler() : { success: false, error: 'no stub for ' + path };
+    return Promise.resolve({
+      ok: true, status: 200, url: url, redirected: false,
+      text: function () { return Promise.resolve(JSON.stringify(body)); }
+    });
+  };
+
+  // ─── Init ───
+  // testMode:false so the real network and ad paths run, not the shims.
+  HSTikTokSDK.init({
+    gameId: '1234567890',
+    sdkKey: 'sk_test_sample',
+    enableDebugLogs: true,
+    testMode: false
+  });
+
+  var EVENTS = ['loginSuccess','loginFailed','purchaseStarted','purchaseSuccess','purchaseFailed',
+                'pendingRewardRecovered','refundNotified','adLogSent','initCompleted',
+                'syncSuccess','syncFailed'];
+  EVENTS.forEach(function (name) {
+    HSTikTokSDK.on(name, function () {
+      write('event  ' + name + '  ' + JSON.stringify([].slice.call(arguments)), 'evt');
+      refresh();
+    });
+  });
+
+  // ─── Providers ───
+  var save = { level: 4, coins: 250 };
+  var provider = {
+    isDirtyForCloud: false,
+    serializeForCloud: function () { return save; },
+    onCloudSyncSuccess: function (ts) { write('provider.onCloudSyncSuccess(' + ts + ')'); },
+    onCloudDataReceived: function (json, ts) { write('provider.onCloudDataReceived(' + json + ', ' + ts + ')'); }
+  };
+  HSTikTokSDK.registerSyncProvider(provider);
+  HSTikTokSDK.registerRewardHandler({
+    onPurchaseRewardsGranted: function (pid, r) { write('grant  ' + pid + '  ' + JSON.stringify(r)); },
+    onPendingRewardsRecovered: function (pid, r) { write('recover  ' + pid + '  ' + JSON.stringify(r)); },
+    onRefundNotified: function (pid, r) { write('refund  ' + pid + '  ' + JSON.stringify(r)); }
+  });
+
+  function refresh() {
+    document.getElementById('s-host').textContent = window.tt ? 'tt (shim)' : 'none';
+    document.getElementById('s-mode').textContent = HSTikTokSDK.isTestMode ? 'TEST' : 'PRODUCTION';
+    document.getElementById('s-auth').textContent = HSTikTokSDK.isAuthenticated ? 'yes' : 'no';
+    document.getElementById('s-openid').textContent = HSTikTokSDK.openId || '—';
+  }
+
+  // ─── Shim controls ───
+  document.getElementById('failPay').onchange = function (e) { window.__ttShim.failPay = e.target.checked; };
+  document.getElementById('adOutcome').onchange = function (e) { window.__ttShim.adOutcome = e.target.value; };
+  document.getElementById('adIsEnded').onchange = function (e) { window.__ttShim.adIsEnded = e.target.checked; };
+
+  var ACTIONS = {
+    login:        function () { return HSTikTokSDK.auth.login().then(function (r) { show('login', r); }); },
+    mockLogin:    function () { return HSTikTokSDK.auth.mockLogin().then(function (r) { show('mockLogin', r); }); },
+    clearSession: function () { HSTikTokSDK.clearSession(); refresh(); write('session cleared'); },
+
+    shop:    function () { return HSTikTokSDK.iap.getShopItems().then(function (r) { show('getShopItems', r); }); },
+    buy:     function () { return HSTikTokSDK.iap.buyProduct('hint_pack_15').then(function (r) { show('buyProduct', r); }); },
+    orders:  function () { return HSTikTokSDK.iap.getOrders().then(function (r) { show('getOrders', r); }); },
+    pending: function () { return HSTikTokSDK.iap.checkPendingRewards().then(function (r) { show('checkPendingRewards', r); }); },
+
+    adRemote: function () { return HSTikTokSDK.ads.showAdsRemote('level_end').then(function (r) { show('showAdsRemote', r); }); },
+    adReward: function () { return HSTikTokSDK.ads.showAd({ id: 'rewarded_1', type: 'reward' }).then(function (r) { show('showAd', r); }); },
+    adInter:  function () { return HSTikTokSDK.ads.showAd({ id: 'inter_1', type: 'interstitial' }).then(function (r) { show('showAd', r); }); },
+    limits:   function () { show('getRateLimits', HSTikTokSDK.ads.getRateLimits()); },
+
+    dirty:   function () { save.coins += 10; provider.isDirtyForCloud = true; write('marked dirty, coins=' + save.coins); },
+    syncNow: function () { return HSTikTokSDK.sync.syncNow().then(function (r) { show('syncNow', r); }); },
+    flush:   function () { write('dispatching hide…'); HSTikTokSDK.sync.flush(); },
+
+    entrance: function () { return HSTikTokSDK.missions.execute(HSTikTokSDK.MissionType.EntranceMission).then(function (r) { show('EntranceMission', r); }); },
+    shortcut: function () { return HSTikTokSDK.missions.execute(HSTikTokSDK.MissionType.ShortcutMission).then(function (r) { show('ShortcutMission', r); }); },
+
+    clear: function () { log.textContent = ''; }
+  };
+
+  document.body.addEventListener('click', function (e) {
+    var act = e.target.getAttribute && e.target.getAttribute('data-act');
+    if (!act || !ACTIONS[act]) return;
+    try {
+      var out = ACTIONS[act]();
+      if (out && out.catch) out.catch(function (err) { write('threw  ' + err, 'err'); });
+    } catch (err) {
+      write('threw  ' + err, 'err');
+    }
+  });
+
+  refresh();
+  write('SDK v' + HSTikTokSDK.version + ' ready. Start with login().');
+})();
+</script>
+</body>
+</html>

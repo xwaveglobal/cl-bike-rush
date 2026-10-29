@@ -26,7 +26,8 @@
     "check:tiktok": "node scripts/tiktok-tools.mjs check",
     "preview:tiktok": "node hs-sdk/web/hs-web.mjs preview tiktok",
     "pack:tiktok": "node scripts/tiktok-tools.mjs pack",
-    "test:perks": "node --experimental-transform-types --no-warnings tests/perks.test.ts"
+    "test:perks": "node --experimental-transform-types --no-warnings tests/perks.test.ts",
+    "build:hero-viewer": "node tools/hero-viewer/build.mjs"
   },
   "dependencies": {
     "three": "0.169.0"

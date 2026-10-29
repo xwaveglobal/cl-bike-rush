@@ -16,3 +16,6 @@ server/data.json
 # AI Studio & local lockfiles
 .aistudio/
 bun.lock
+
+# HS SDK key for the TikTok build (never commit; see scripts/build-tiktok.mjs)
+hs.local.json
