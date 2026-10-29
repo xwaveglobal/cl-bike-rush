@@ -48,6 +48,27 @@ const COL = {
 export /** detail scale for radial/segment counts (set per build from the LOD level) */
 let LOD_SCALE = 1;
 
+/**
+ * Spine length factor (pelvis -> chest). The reference rider has a shorter back than the original
+ * skeleton: 0.82 puts shoulders and head on the reference LEFT view without lowering the hips.
+ */
+export const TORSO_K = 0.82;
+/** bind-space remap for torso geometry authored for TORSO_K = 1 (pelvis y 0.8 -> chest y 1.16) */
+const CHEST_OFF = [0, 0.36, -0.17] as const;
+const torsoT = (y: number) => Math.min(1, Math.max(0, (y - 0.8) / 0.36));
+const tmap = (c: V3): V3 => { const t = (TORSO_K - 1) * torsoT(c[1]); return [c[0], c[1] + t * CHEST_OFF[1], c[2] + t * CHEST_OFF[2]]; };
+const tunmap = (p: THREE.Vector3) => {
+  const t = (TORSO_K - 1) * Math.min(1, Math.max(0, (p.y - 0.8) / (0.36 * TORSO_K)));
+  return new THREE.Vector3(p.x, p.y - t * CHEST_OFF[1], p.z - t * CHEST_OFF[2]);
+};
+/** arm segment lengths (shoulder->elbow, elbow->wrist): long enough to reach the grips from the upright seat */
+export const UPPER_ARM_LEN = 0.29;
+export const FOREARM_LEN = 0.27;
+/** arm geometry is authored for a 0.27 / 0.25 arm: remap upper-arm-space z (and the inverse for painters) */
+const az = (z: number) => (z >= 0 ? z : z >= -0.27 ? (z * UPPER_ARM_LEN) / 0.27 : -UPPER_ARM_LEN + ((z + 0.27) * FOREARM_LEN) / 0.25);
+const azInv = (z: number) => (z >= 0 ? z : z >= -UPPER_ARM_LEN ? (z * 0.27) / UPPER_ARM_LEN : -0.27 + ((z + UPPER_ARM_LEN) * 0.25) / FOREARM_LEN);
+/** forearm-space z authored for a 0.25 forearm */
+const fz = (z: number) => (z * FOREARM_LEN) / 0.25;
 /** leg segment lengths (hip->knee, knee->ankle); tuned so the knee lands on the reference LEFT view */
 export const THIGH_LEN = 0.34;
 export const SHIN_LEN = 0.41;
@@ -253,17 +274,17 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     return b;
   };
   const pelvis = makeBone('Pelvis', null, 0, 0.8, 0.22);
-  const spine1 = makeBone('Spine_1', pelvis, 0, 0.11, -0.05);
-  const spine2 = makeBone('Spine_2', spine1, 0, 0.12, -0.06);
-  const chest = makeBone('Chest', spine2, 0, 0.13, -0.06);
+  const spine1 = makeBone('Spine_1', pelvis, 0, 0.11 * TORSO_K, -0.05 * TORSO_K);
+  const spine2 = makeBone('Spine_2', spine1, 0, 0.12 * TORSO_K, -0.06 * TORSO_K);
+  const chest = makeBone('Chest', spine2, 0, 0.13 * TORSO_K, -0.06 * TORSO_K);
   const neck = makeBone('Neck', chest, 0, 0.13, -0.04);
   const head = makeBone('Head', neck, 0, 0.07, -0.02);
   const upperArmL = makeBone('UpperArm_L', chest, -0.195, 0.08, -0.02);
-  const forearmL = makeBone('Forearm_L', upperArmL, 0, 0, -0.27);
-  const handL = makeBone('Hand_L', forearmL, 0, 0, -0.25);
+  const forearmL = makeBone('Forearm_L', upperArmL, 0, 0, -UPPER_ARM_LEN);
+  const handL = makeBone('Hand_L', forearmL, 0, 0, -FOREARM_LEN);
   const upperArmR = makeBone('UpperArm_R', chest, 0.195, 0.08, -0.02);
-  const forearmR = makeBone('Forearm_R', upperArmR, 0, 0, -0.27);
-  const handR = makeBone('Hand_R', forearmR, 0, 0, -0.25);
+  const forearmR = makeBone('Forearm_R', upperArmR, 0, 0, -UPPER_ARM_LEN);
+  const handR = makeBone('Hand_R', forearmR, 0, 0, -FOREARM_LEN);
   const thighL = makeBone('Thigh_L', pelvis, -0.135, -0.02, -0.02);
   const shinL = makeBone('Shin_L', thighL, 0, 0, -THIGH_LEN);
   const footL = makeBone('Foot_L', shinL, 0, 0, -SHIN_LEN);
@@ -331,7 +352,8 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
   // ---- TORSO: one continuous surface from seat to neck (built directly in bind space).
   // v = u × tangent: with the spine running up/forward, +v points to the BACK, -v to the chest.
   const SEAM = C(0x343b48);
-  const torsoPaint: Painter = (p, n) => {
+  const torsoPaint: Painter = (q, n) => {
+    const p = tunmap(q);
     // reference back (crop 22): silver V plate from the shoulder blades to a point at mid-back,
     // slanted cobalt strips on the ribs, small slanted silver kidney plates, many stitched panel
     // seams on black leather; silver chest plate, cobalt collar
@@ -368,18 +390,18 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
   add(
     loft(
       [
-        { c: [0, 0.69, 0.25], ru: 0.08, rv: 0.05, rvN: 0.05 },
-        { c: [0, 0.74, 0.24], ru: 0.124, rv: 0.07, rvN: 0.078, p: 2.2 },
-        { c: [0, 0.83, 0.21], ru: 0.13, rv: 0.074, rvN: 0.082, p: 2.2 },
-        { c: [0, 0.93, 0.165], ru: 0.136, rv: 0.082, rvN: 0.084, p: 2.2 },
-        { c: [0, 1.04, 0.11], ru: 0.156, rv: 0.105, rvN: 0.096, p: 2.2 },
-        { c: [0, 1.14, 0.06], ru: 0.18, rv: 0.13, rvN: 0.104, p: 2.3 },
-        { c: [0, 1.212, 0.035], ru: 0.2, rv: 0.118, rvN: 0.092, p: 2.5 },
-        { c: [0, 1.262, 0.02], ru: 0.165, rv: 0.085, rvN: 0.074, p: 2.4 },
-        { c: [0, 1.3, 0.008], ru: 0.08, rv: 0.064, rvN: 0.058 },
-        { c: [0, 1.345, -0.004], ru: 0.054, rv: 0.05, rvN: 0.047 },
-        { c: [0, 1.39, -0.014], ru: 0.046, rv: 0.044, rvN: 0.042 },
-        { c: [0, 1.425, -0.02], ru: 0.02, rv: 0.02 },
+        { c: tmap([0, 0.69, 0.25]), ru: 0.08, rv: 0.05, rvN: 0.05 },
+        { c: tmap([0, 0.74, 0.24]), ru: 0.124, rv: 0.07, rvN: 0.078, p: 2.2 },
+        { c: tmap([0, 0.83, 0.21]), ru: 0.13, rv: 0.074, rvN: 0.082, p: 2.2 },
+        { c: tmap([0, 0.93, 0.165]), ru: 0.136, rv: 0.095, rvN: 0.084, p: 2.2 },
+        { c: tmap([0, 1.04, 0.11]), ru: 0.156, rv: 0.125, rvN: 0.096, p: 2.2 },
+        { c: tmap([0, 1.14, 0.06]), ru: 0.18, rv: 0.148, rvN: 0.104, p: 2.3 },
+        { c: tmap([0, 1.212, 0.035]), ru: 0.2, rv: 0.13, rvN: 0.092, p: 2.5 },
+        { c: tmap([0, 1.262, 0.02]), ru: 0.165, rv: 0.085, rvN: 0.074, p: 2.4 },
+        { c: tmap([0, 1.3, 0.008]), ru: 0.08, rv: 0.064, rvN: 0.058 },
+        { c: tmap([0, 1.345, -0.004]), ru: 0.054, rv: 0.05, rvN: 0.047 },
+        { c: tmap([0, 1.39, -0.014]), ru: 0.046, rv: 0.044, rvN: 0.042 },
+        { c: tmap([0, 1.425, -0.02]), ru: 0.02, rv: 0.02 },
       ],
       torsoPaint, 34, 5,
     ),
@@ -400,7 +422,8 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     // the arm's +X/-X toward the body in bind pose ends up on top of the arm while riding
     const inSign = -sx;
     // ---- ARM: shoulder → wrist in one piece (UpperArm local space, runs along -Z, +v = up)
-    const armPaint: Painter = (p, n) => {
+    const armPaint: Painter = (q, n) => {
+      const p = { z: azInv(q.z) };
       // top of the arm while riding = n.x * inSign > 0 (see IK frame)
       const top = n.x * inSign;
       if (p.z > -0.065 && top > 0.15) return p.z < -0.03 && p.z > -0.045 && top > 0.5 ? COL.cobalt : COL.silver; // shoulder cap
@@ -413,42 +436,42 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     add(
       loft(
         [
-          { c: [0, 0.0, 0.055], ru: 0.025, rv: 0.025 },
-          { c: [0, 0.0, 0.028], ru: 0.056, rv: 0.058, rvN: 0.05 },
-          { c: [sx * 0.004, 0.002, -0.03], ru: 0.062, rv: 0.058, rvN: 0.052 },
-          { c: [0, 0, -0.12], ru: 0.05, rv: 0.05, rvN: 0.047 },
-          { c: [0, 0, -0.22], ru: 0.045, rv: 0.043, rvN: 0.043 },
-          { c: [0, 0, -0.27], ru: 0.042, rv: 0.042, rvN: 0.041 },
-          { c: [0, 0, -0.325], ru: 0.047, rv: 0.046, rvN: 0.044 },
-          { c: [0, 0, -0.42], ru: 0.04, rv: 0.037, rvN: 0.036 },
-          { c: [0, 0, -0.495], ru: 0.033, rv: 0.03, rvN: 0.029 },
-          { c: [0, 0, -0.53], ru: 0.02, rv: 0.018 },
+          { c: [0, 0.0, az(0.055)], ru: 0.025, rv: 0.025 },
+          { c: [0, 0.0, az(0.028)], ru: 0.056, rv: 0.058, rvN: 0.05 },
+          { c: [sx * 0.004, 0.002, az(-0.03)], ru: 0.062, rv: 0.058, rvN: 0.052 },
+          { c: [0, 0, az(-0.12)], ru: 0.05, rv: 0.05, rvN: 0.047 },
+          { c: [0, 0, az(-0.22)], ru: 0.045, rv: 0.043, rvN: 0.043 },
+          { c: [0, 0, az(-0.27)], ru: 0.042, rv: 0.042, rvN: 0.041 },
+          { c: [0, 0, az(-0.325)], ru: 0.047, rv: 0.046, rvN: 0.044 },
+          { c: [0, 0, az(-0.42)], ru: 0.04, rv: 0.037, rvN: 0.036 },
+          { c: [0, 0, az(-0.495)], ru: 0.033, rv: 0.03, rvN: 0.029 },
+          { c: [0, 0, az(-0.53)], ru: 0.02, rv: 0.018 },
         ],
         armPaint, 16, 3,
       ),
       suit, upper, ['Chest', `UpperArm_${sfx}`, `Forearm_${sfx}`, `Hand_${sfx}`], 6,
     );
     // layered armour: second shoulder plate, upper-arm plate, three overlapping forearm plates
-    add(ellipsoid([inSign * 0.044, 0, -0.15], [0.007, 0.04, 0.06], solid(COL.silverHi), { w: 14, h: 10 }),
+    add(ellipsoid([inSign * 0.044, 0, az(-0.15)], [0.007, 0.04, 0.06], solid(COL.silverHi), { w: 14, h: 10 }),
       mats.riderArmor, upper, [`UpperArm_${sfx}`]);
     for (const [k, z] of [-0.335, -0.385, -0.435].entries()) {
-      add(ellipsoid([inSign * (0.041 - k * 0.003), 0, z], [0.006, 0.033 - k * 0.003, 0.034], solid(k === 1 ? COL.cobalt : COL.silverHi), { w: 12, h: 8 }),
+      add(ellipsoid([inSign * (0.041 - k * 0.003), 0, az(z)], [0.006, 0.033 - k * 0.003, 0.034], solid(k === 1 ? COL.cobalt : COL.silverHi), { w: 12, h: 8 }),
         mats.riderArmor, upper, [`Forearm_${sfx}`]);
     }
     // shoulder slider (titanium cap)
-    add(ellipsoid([sx * 0.012, 0.036, -0.035], [0.058, 0.016, 0.068], solid(COL.silverHi), { w: 22, h: 14 }),
+    add(ellipsoid([sx * 0.012, 0.036, az(-0.035)], [0.058, 0.016, 0.068], solid(COL.silverHi), { w: 22, h: 14 }),
       mats.riderArmor, upper, [`UpperArm_${sfx}`]);
     // glove gauntlet over the wrist (Forearm local)
     add(
       loft(
         [
-          { c: [0, 0, -0.165], ru: 0.03, rv: 0.03 },
-          { c: [0, 0, -0.18], ru: 0.045, rv: 0.043 },
-          { c: [0, 0, -0.215], ru: 0.044, rv: 0.041 },
-          { c: [0, 0, -0.255], ru: 0.037, rv: 0.034 },
-          { c: [0, 0, -0.275], ru: 0.025, rv: 0.022 },
+          { c: [0, 0, fz(-0.165)], ru: 0.03, rv: 0.03 },
+          { c: [0, 0, fz(-0.18)], ru: 0.045, rv: 0.043 },
+          { c: [0, 0, fz(-0.215)], ru: 0.044, rv: 0.041 },
+          { c: [0, 0, fz(-0.255)], ru: 0.037, rv: 0.034 },
+          { c: [0, 0, fz(-0.275)], ru: 0.025, rv: 0.022 },
         ],
-        (p, n) => mix(COL.black, COL.cobalt, band(n.x * inSign, 0.6, 0.15) * band(p.z, -0.235, 0.02)),
+        (p, n) => mix(COL.black, COL.cobalt, band(n.x * inSign, 0.6, 0.15) * band(p.z, fz(-0.235), 0.02)),
         14, 2,
       ),
       suit, fore, [`Forearm_${sfx}`, `Hand_${sfx}`], 6,

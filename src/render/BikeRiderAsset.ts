@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { buildHumanRider, THIGH_LEN, SHIN_LEN } from './RiderHuman.ts';
+import { buildHumanRider, THIGH_LEN, SHIN_LEN, UPPER_ARM_LEN, FOREARM_LEN } from './RiderHuman.ts';
 import { buildSportBike, BIKE_ERGO } from './BikeBody.ts';
 
 export type BikePoseName =
@@ -63,6 +63,8 @@ export interface BikeRiderMaterials {
   bikeGloss: THREE.MeshPhysicalMaterial;
   bikeAlu: THREE.MeshStandardMaterial;
   bikeChrome: THREE.MeshStandardMaterial;
+  /** bright polished chamfer strips along the fairing panel edges */
+  bikeEdge: THREE.MeshStandardMaterial;
   bikeGold: THREE.MeshStandardMaterial;
   bikeTyre: THREE.MeshStandardMaterial;
   bikeSteel: THREE.MeshStandardMaterial;
@@ -2068,7 +2070,7 @@ export function applyBikeRiderPose(rig: {
   b.Pelvis.rotation.set(pelvisPitch, pelvisYaw, pelvisRoll);
 
   // Spine segments flex forward in LowTuck & DownSlide so chest presses flat against the fuel tank
-  const spineFlex = -0.13 - lowTuck * 0.035 - downSlide * 0.05;
+  const spineFlex = -0.14 - lowTuck * 0.035 - downSlide * 0.05;
   // hang off into the turn: the upper body leans further than the bike
   const spineLeanRoll = -lean * 0.13 * (1 - downSlide) + slideSide * 0.06 * downSlide + buzz;
   b.Spine_1.rotation.set(spineFlex, 0, spineLeanRoll);
@@ -2122,8 +2124,8 @@ export function applyBikeRiderPose(rig: {
     b.UpperArm_L,
     b.Forearm_L,
     b.Hand_L,
-    0.27 * RIDER_SCALE,
-    0.25 * RIDER_SCALE,
+    UPPER_ARM_LEN * RIDER_SCALE,
+    FOREARM_LEN * RIDER_SCALE,
     _gripTargetL,
     _poleL,
     [0.15, 0.1, -0.2],
@@ -2132,8 +2134,8 @@ export function applyBikeRiderPose(rig: {
     b.UpperArm_R,
     b.Forearm_R,
     b.Hand_R,
-    0.27 * RIDER_SCALE,
-    0.25 * RIDER_SCALE,
+    UPPER_ARM_LEN * RIDER_SCALE,
+    FOREARM_LEN * RIDER_SCALE,
     _gripTargetR,
     _poleR,
     [0.15, -0.1, 0.2],
@@ -2465,6 +2467,7 @@ export function createBikeRiderMaterials(textures?: BikeRiderPBRTextures | numbe
   const bikeGloss = new THREE.MeshPhysicalMaterial({ name: 'Mat_Bike_GlossBlack', color: 0x0d0f13, roughness: 0.32, metalness: 0.6, clearcoat: 0.8, clearcoatRoughness: 0.1 });
   const bikeAlu = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_Aluminium', color: 0xb6bcc6, roughness: 0.34, metalness: 0.92 });
   const bikeChrome = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_Exhaust', color: 0xc9ced6, roughness: 0.22, metalness: 1.0 });
+  const bikeEdge = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_EdgeChamfer', color: 0xf0f3f8, roughness: 0.16, metalness: 0.4, emissive: new THREE.Color(0x9aa3b0), emissiveIntensity: 0.28 });
   const bikeGold = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_Gold', color: 0xd9a441, roughness: 0.28, metalness: 1.0 });
   const bikeTyre = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_Tyre', color: 0x17191d, roughness: 0.88, metalness: 0.0 });
   const bikeSteel = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_Rotor', color: 0xa9afb8, roughness: 0.38, metalness: 0.95 });
@@ -2472,14 +2475,14 @@ export function createBikeRiderMaterials(textures?: BikeRiderPBRTextures | numbe
   const bikeRed = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_BrakeLight', color: 0xff2238, emissive: new THREE.Color(0xff1a30), emissiveIntensity: 1.6, roughness: 0.3 });
   const bikeScreen = new THREE.MeshPhysicalMaterial({ name: 'Mat_Bike_Screen', color: 0x2a3444, roughness: 0.04, metalness: 0.0, clearcoat: 1.0, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
 
-  const bikeLens = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_LampLens', color: 0x1aa7c4, emissive: new THREE.Color(0x19d2ff), emissiveIntensity: 1.5, roughness: 0.15, metalness: 0.1 });
+  const bikeLens = new THREE.MeshStandardMaterial({ name: 'Mat_Bike_LampLens', color: 0x1aa7c4, emissive: new THREE.Color(0x19d2ff), emissiveIntensity: 2.4, roughness: 0.15, metalness: 0.1 });
   const bikeCaliper = new THREE.MeshPhysicalMaterial({ name: 'Mat_Bike_Caliper', color: 0xb3121f, roughness: 0.32, metalness: 0.45, clearcoat: 0.8 });
 
   return {
     textures: tex,
     materials: {
       bikeLens, bikeCaliper,
-      bikePaint, bikeSeat, bikeBlack, bikeGloss, bikeAlu, bikeChrome, bikeGold, bikeTyre, bikeSteel, bikeBlue, bikeRed, bikeScreen,
+      bikePaint, bikeSeat, bikeBlack, bikeGloss, bikeAlu, bikeChrome, bikeEdge, bikeGold, bikeTyre, bikeSteel, bikeBlue, bikeRed, bikeScreen,
       riderSuit,
       riderHelmet,
       riderArmor,

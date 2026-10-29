@@ -437,6 +437,74 @@ function sidePlate(
 }
 
 /**
+ * Polished chamfer along a side plate's outer edge: a thin 45-degree strip from the plate's outline
+ * (just inside its outer face) to an inset copy of the outline (just proud of it). It catches the light
+ * as a bright line, which is what makes the reference fairing read as crisp, cut panels.
+ */
+function edgeRim(outline: [number, number][], xOf: (z: number, y: number) => number, t: number, sx: number, w = 0.006, densify = 0.03): THREE.BufferGeometry {
+  const pts: [number, number][] = [];
+  for (let i = 0; i < outline.length; i++) {
+    const a = outline[i], b = outline[(i + 1) % outline.length];
+    const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / densify));
+    for (let q = 0; q < n; q++) pts.push([a[0] + ((b[0] - a[0]) * q) / n, a[1] + ((b[1] - a[1]) * q) / n]);
+  }
+  if (THREE.ShapeUtils.isClockWise(pts.map(([z, y]) => new THREE.Vector2(z, y)))) pts.reverse();
+  const N = pts.length;
+  const inset = pts.map((p, i) => {
+    const a = pts[(i - 1 + N) % N], c = pts[(i + 1) % N];
+    const n1 = [-(p[1] - a[1]), p[0] - a[0]], n2 = [-(c[1] - p[1]), c[0] - p[0]];
+    const l1 = Math.hypot(n1[0], n1[1]) || 1, l2 = Math.hypot(n2[0], n2[1]) || 1;
+    let nz = n1[0] / l1 + n2[0] / l2, ny = n1[1] / l1 + n2[1] / l2;
+    const l = Math.hypot(nz, ny) || 1;
+    nz /= l; ny /= l;
+    const miter = Math.min(2, 1 / Math.max(0.35, (nz * n1[0]) / l1 + (ny * n1[1]) / l1));
+    return [p[0] + nz * w * miter, p[1] + ny * w * miter] as [number, number];
+  });
+  const pos: number[] = [];
+  const O = (k: number) => { const [z, y] = pts[k]; return [sx * (xOf(z, y) + t / 2 - 0.001), y, z]; };
+  const I = (k: number) => { const [z, y] = inset[k]; return [sx * (xOf(z, y) + t / 2 + 0.0022), y, z]; };
+  for (let i = 0; i < N; i++) {
+    const j = (i + 1) % N;
+    const q = [O(i), O(j), I(j), I(i)];
+    // both windings: the strip is thin and seen from either side of the bike
+    for (const [a, b, c] of [[0, 1, 2], [0, 2, 3], [0, 2, 1], [0, 3, 2]]) pos.push(...q[a], ...q[b], ...q[c]);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
+/** soft radial glow (additive) used for lamp halos */
+let glowTex: THREE.DataTexture | null = null;
+function glowTexture() {
+  if (glowTex) return glowTex;
+  const S = 64, d = new Uint8Array(S * S * 4);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const r = Math.hypot(x + 0.5 - S / 2, y + 0.5 - S / 2) / (S / 2);
+    const a = Math.max(0, 1 - r);
+    const v = Math.round(255 * Math.pow(a, 2.2));
+    const o = (y * S + x) * 4;
+    d[o] = d[o + 1] = d[o + 2] = 255; d[o + 3] = v;
+  }
+  glowTex = new THREE.DataTexture(d, S, S, THREE.RGBAFormat);
+  glowTex.magFilter = THREE.LinearFilter;
+  glowTex.minFilter = THREE.LinearFilter;
+  glowTex.needsUpdate = true;
+  return glowTex;
+}
+/** forward-facing additive halo quad (invisible from behind, so it never haloes over the rider in the chase cam) */
+function halo(color: number, size: number, pos: [number, number, number], yaw = 0, pitch = 0, opacity = 0.9) {
+  const m = new THREE.MeshBasicMaterial({ map: glowTexture(), color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  const q = new THREE.Mesh(new THREE.PlaneGeometry(size, size), m);
+  q.rotation.set(pitch, Math.PI + yaw, 0); // plane normal +Z -> faces -Z (forward) when yaw = 0
+  q.position.set(...pos);
+  q.renderOrder = 10;
+  q.name = 'LampHalo';
+  return q;
+}
+
+/**
  * Rider ergonomics shared with BikeRiderAsset (IK targets + pelvis): measured on the reference
  * sheet (clip-ons high and back, rear-set pegs, seat at ~0.85 m).
  */
@@ -444,9 +512,9 @@ export const BIKE_ERGO = {
   /** grip half-width and offset behind the steering pivot (pivot z = -0.52), grip height */
   gripX: 0.27, gripLocalZ: 0.165, gripY: 0.925,
   /** footpegs */
-  pegX: 0.2, pegY: 0.47, pegZ: 0.32,
+  pegX: 0.2, pegY: 0.488, pegZ: 0.335,
   /** pelvis rest position on the seat (overlay-aligned to the reference LEFT view: upright sport seat) */
-  pelvisY: 0.97, pelvisZ: 0.425,
+  pelvisY: 0.975, pelvisZ: 0.43,
 };
 
 // ----------------------------------------------------------------------------------- wheels
@@ -555,15 +623,15 @@ export function buildSportBike(M: BikeRiderMaterials, lod = 0) {
 
   // ===== NOSE (measured: tip at z -0.935 y 0.735, rises to the screen base, black lower band)
   const noseKeys: FKey[] = [
-    { z: -0.935, yb: 0.724, yt: 0.746, yw: 0.735, hw: 0.018, topW: 0.006, ridge: 0 },
-    { z: -0.9, yb: 0.702, yt: 0.792, yw: 0.737, hw: 0.088, topW: 0.03, ridge: 0.006 },
-    { z: -0.84, yb: 0.688, yt: 0.848, yw: 0.748, hw: 0.148, topW: 0.05, ridge: 0.01 },
-    { z: -0.74, yb: 0.68, yt: 0.888, yw: 0.762, hw: 0.196, topW: 0.07, ridge: 0.012 },
-    { z: -0.62, yb: 0.69, yt: 0.926, yw: 0.782, hw: 0.222, topW: 0.085, ridge: 0.012 },
-    { z: -0.5, yb: 0.712, yt: 0.955, yw: 0.8, hw: 0.232, topW: 0.09, ridge: 0.01 },
-    { z: -0.4, yb: 0.745, yt: 0.968, yw: 0.82, hw: 0.222, topW: 0.09, ridge: 0.006 },
-    { z: -0.34, yb: 0.8, yt: 0.95, yw: 0.85, hw: 0.196, topW: 0.08, ridge: 0.002 },
-    { z: -0.31, yb: 0.86, yt: 0.92, yw: 0.88, hw: 0.1, topW: 0.05, ridge: 0 },
+    { z: -0.935, yb: 0.724, yt: 0.742, yw: 0.735, hw: 0.018, topW: 0.006, ridge: 0 },
+    { z: -0.9, yb: 0.702, yt: 0.767, yw: 0.737, hw: 0.088, topW: 0.03, ridge: 0.006 },
+    { z: -0.84, yb: 0.688, yt: 0.823, yw: 0.748, hw: 0.148, topW: 0.05, ridge: 0.01 },
+    { z: -0.74, yb: 0.68, yt: 0.863, yw: 0.762, hw: 0.196, topW: 0.07, ridge: 0.012 },
+    { z: -0.62, yb: 0.69, yt: 0.901, yw: 0.782, hw: 0.222, topW: 0.085, ridge: 0.012 },
+    { z: -0.5, yb: 0.712, yt: 0.930, yw: 0.8, hw: 0.232, topW: 0.09, ridge: 0.01 },
+    { z: -0.4, yb: 0.745, yt: 0.956, yw: 0.82, hw: 0.222, topW: 0.09, ridge: 0.006 },
+    { z: -0.34, yb: 0.8, yt: 0.946, yw: 0.85, hw: 0.196, topW: 0.08, ridge: 0.002 },
+    { z: -0.31, yb: 0.86, yt: 0.920, yw: 0.88, hw: 0.1, topW: 0.05, ridge: 0 },
   ];
   const lerpKey = (keys: FKey[], k: string, z: number) => {
     if (z <= keys[0].z) return keys[0][k];
@@ -597,16 +665,29 @@ export function buildSportBike(M: BikeRiderMaterials, lod = 0) {
   // centre intake + tiny red element between the lamps
   P.add(ellipsoid([0, 0.71, -0.918], [0.03, 0.012, 0.03], solid(K.black), { w: 14, h: 8 }), M.bikeGloss);
   { const r = new THREE.BoxGeometry(0.03, 0.006, 0.01); r.translate(0, 0.703, -0.928); P.add(r, M.bikeRed); }
+  // headlamp light: halos on each lens + one spot lighting the road ahead (no shadows; cheap)
+  const lights = new THREE.Group();
+  lights.name = 'BikeLights';
+  for (const sx of [-1, 1]) {
+    const z = -0.83, y = 0.76;
+    lights.add(halo(0x7fefff, 0.28, [sx * (noseX(z, y) + 0.03), y, z - 0.01], -sx * 0.55, 0, 0.75));
+    lights.add(halo(0xdffcff, 0.07, [sx * (noseX(z, y) + 0.025), y, z - 0.005], -sx * 0.55, 0, 0.9));
+  }
+  const head = new THREE.SpotLight(0xc8f2ff, 90, 24, 0.36, 0.55, 1.5);
+  head.name = 'Headlight';
+  head.position.set(0, 0.74, -0.95);
+  head.target.position.set(0, 0.0, -7.0);
+  lights.add(head, head.target);
 
   // ===== WINDSCREEN (overlay-aligned to the reference: rises steeply, peak at z ~-0.39 y ~1.14)
   {
     const keys = [
-      { z: -0.8, w: 0.075, y: 0.86, h: 0.0 },
-      { z: -0.7, w: 0.115, y: 0.885, h: 0.07 },
-      { z: -0.59, w: 0.136, y: 0.91, h: 0.15 },
-      { z: -0.49, w: 0.13, y: 0.93, h: 0.205 },
-      { z: -0.41, w: 0.106, y: 0.945, h: 0.2 },
-      { z: -0.37, w: 0.08, y: 0.952, h: 0.16 },
+      { z: -0.78, w: 0.075, y: 0.845, h: 0.0 },
+      { z: -0.68, w: 0.115, y: 0.87, h: 0.066 },
+      { z: -0.57, w: 0.136, y: 0.895, h: 0.142 },
+      { z: -0.47, w: 0.13, y: 0.915, h: 0.196 },
+      { z: -0.39, w: 0.106, y: 0.93, h: 0.192 },
+      { z: -0.35, w: 0.08, y: 0.937, h: 0.154 },
     ];
     const pos: number[] = [], idx: number[] = [];
     const RS = sub(24), ZS = sub(24);
@@ -631,6 +712,13 @@ export function buildSportBike(M: BikeRiderMaterials, lod = 0) {
     P.add(sg, M.bikeScreen);
   }
 
+  // ===== REAR INNER PANELS (subframe / battery-box covers): fills the gap between the seat and the
+  // rear tyre that the reference shows as one dark mass (overlay-aligned, clears the tyre by ~3 cm)
+  for (const sx of [-1, 1]) {
+    P.add(sidePlate([[0.2, 0.8], [0.56, 0.83], [0.63, 0.71], [0.52, 0.62], [0.42, 0.555], [0.3, 0.52], [0.22, 0.58]],
+      () => 0.085, 0.012, sx, solid(K.black)), M.bikeBlack);
+  }
+
   // ===== SIDE FAIRINGS: layered hard-surface plates with real thickness
   const panelX = (z: number, y: number) =>
     0.19 + 0.034 * Math.max(0, 1 - Math.abs(y - 0.56) / 0.42) - 0.05 * Math.max(0, (-0.66 - z) / 0.16) - 0.02 * Math.max(0, (0.3 - y) / 0.2);
@@ -640,13 +728,20 @@ export function buildSportBike(M: BikeRiderMaterials, lod = 0) {
     P.add(sidePlate([[-0.8, 0.705], [-0.24, 0.8], [-0.12, 0.62], [-0.06, 0.24], [-0.4, 0.13], [-0.56, 0.36], [-0.7, 0.58]],
       (z, y) => panelX(z, y) - 0.03, 0.01, sx, solid(K.black)), M.bikeGloss);
     // main silver "V" panel with the blue arrow (livery)
-    P.add(setSideUV(sidePlate([
+    const vPanel: [number, number][] = [
       [-0.805, 0.716], [-0.5, 0.766], [-0.33, 0.8], [-0.225, 0.828], [-0.238, 0.772], [-0.33, 0.736],
       [-0.44, 0.664], [-0.37, 0.43], [-0.405, 0.12], [-0.468, 0.1], [-0.54, 0.38], [-0.64, 0.58], [-0.82, 0.684],
-    ], panelX, 0.014, sx, outerWhite(sx)), 'pod'), paint);
+    ];
+    P.add(setSideUV(sidePlate(vPanel, panelX, 0.014, sx, outerWhite(sx)), 'pod'), paint);
     // rear upper panel beside the tank ("<" piece)
-    P.add(setSideUV(sidePlate([[-0.31, 0.83], [-0.14, 0.868], [-0.12, 0.79], [-0.2, 0.64], [-0.26, 0.64]],
-      (z, y) => panelX(z, y) - 0.012, 0.012, sx, outerWhite(sx)), 'pod'), paint);
+    const lPanel: [number, number][] = [[-0.31, 0.83], [-0.14, 0.868], [-0.12, 0.79], [-0.2, 0.64], [-0.26, 0.64]];
+    const lX = (z: number, y: number) => panelX(z, y) - 0.012;
+    P.add(setSideUV(sidePlate(lPanel, lX, 0.012, sx, outerWhite(sx)), 'pod'), paint);
+    // polished chamfers on both panels (the crisp cut edges of the reference fairing)
+    if (!lo) {
+      P.add(edgeRim(vPanel, panelX, 0.014, sx, 0.008), M.bikeEdge);
+      P.add(edgeRim(lPanel, lX, 0.012, sx, 0.007), M.bikeEdge);
+    }
     // belly pan side with the blue flash (lower rear)
     P.add(sidePlate([[-0.12, 0.27], [0.1, 0.25], [0.13, 0.19], [-0.06, 0.18]], () => 0.16, 0.01, sx, solid(K.blue)), M.bikeBlue);
 
@@ -754,10 +849,10 @@ export function buildSportBike(M: BikeRiderMaterials, lod = 0) {
   ], solid(K.black), sub(26), 4), M.bikeSeat);
   const tailKeys: FKey[] = [
     { z: 0.4, yb: 0.75, yt: 0.86, yw: 0.8, hw: 0.135, topW: 0.07 },
-    { z: 0.55, yb: 0.82, yt: 0.932, yw: 0.865, hw: 0.118, topW: 0.055 },
-    { z: 0.66, yb: 0.865, yt: 0.99, yw: 0.91, hw: 0.098, topW: 0.045 },
-    { z: 0.78, yb: 0.9, yt: 1.012, yw: 0.94, hw: 0.09, topW: 0.045 },
-    { z: 0.87, yb: 0.925, yt: 1.008, yw: 0.958, hw: 0.084, topW: 0.045 },
+    { z: 0.55, yb: 0.82, yt: 0.942, yw: 0.865, hw: 0.118, topW: 0.055 },
+    { z: 0.66, yb: 0.865, yt: 1.004, yw: 0.91, hw: 0.098, topW: 0.045 },
+    { z: 0.78, yb: 0.9, yt: 1.026, yw: 0.94, hw: 0.09, topW: 0.045 },
+    { z: 0.87, yb: 0.925, yt: 1.02, yw: 0.958, hw: 0.084, topW: 0.045 },
     { z: 0.905, yb: 0.938, yt: 0.996, yw: 0.964, hw: 0.072, topW: 0.04 },
   ];
   const tailPaint: Painter = (_p, n) => (n.y > 0.6 || n.y < -0.3 ? K.black : WHITE);
@@ -784,6 +879,9 @@ export function buildSportBike(M: BikeRiderMaterials, lod = 0) {
     P.add(lens, M.riderGlow);
   }
   { const r = new THREE.BoxGeometry(0.03, 0.007, 0.01); r.translate(0, 0.946, 0.908); P.add(r, M.bikeRed); }
+  // tail lamp halos facing backwards (seen by the chase camera)
+  for (const sx of [-1, 1]) lights.add(halo(0x58e6ff, 0.13, [sx * 0.04, 0.972, 0.92], Math.PI, 0, 0.7));
+  lights.add(halo(0xff2a3a, 0.07, [0, 0.946, 0.915], Math.PI, 0, 0.8));
   // license flap "beak" under the lamps
   P.add(facetShell([
     { z: 0.74, cx: 0, cy: 0.905, w: 0.04, h: 0.012 },
@@ -945,6 +1043,7 @@ export function buildSportBike(M: BikeRiderMaterials, lod = 0) {
   rearPivot.add(rearWheelSpin);
   chassisGroup.add(rearPivot);
 
+  chassisGroup.add(lights);
   return { chassisGroup, steeringPivot, frontWheelSpin, rearWheelSpin, swingarmGroup };
 }
 

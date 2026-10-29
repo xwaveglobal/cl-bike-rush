@@ -4,6 +4,14 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 
 ---
 
+## 2026-10-29 (chiều) — Căn lệch lần 2 + ánh sáng chi tiết (branch `feat/hero-3d-align`, chưa push)
+
+- Đo độ trùng hình bóng (IoU) với ảnh mẫu bằng `docs/hero-3d/overlay/sil.py`: trung bình 0.729 (main) → 0.790 (lần 1) → 0.803; ngang trái 0.734 → 0.881, xe ngang 0.854 → 0.916.
+- Người: lưng ngắn lại (`TORSO_K` 0.82, hình thân nội suy theo), tay dài hơn (`UPPER_ARM_LEN` 0.29 / `FOREARM_LEN` 0.27) để với tới tay lái từ tư thế ngồi thẳng, lưng dày hơn, hông nâng, gác chân 0.488/0.335. Các khớp lệch ảnh mẫu ≤4 cm.
+- Xe: kính chắn gió thấp/lùi thêm, mặt trên mũi thấp 2.5 cm, đuôi cao thêm ~1.4 cm, thêm ốp tối giữa yên và bánh sau.
+- Ánh sáng: thấu kính đèn pha emissive 2.4 (bloom bắt), quầng sáng hướng trước ở 2 đèn, SpotLight "Headlight" rọi đường phía trước (không đổ bóng), quầng sáng đèn hậu hướng sau; cạnh vát sáng (`edgeRim`, vật liệu `bikeEdge`) chạy theo mép tấm ốp bạc chính và tấm "<".
+- Tam giác: LOD0 ~72k, LOD1 ~49k; thêm ~7 mesh quầng sáng + 1 đèn. Typecheck 15 lỗi có sẵn.
+
 ## 2026-10-29 (trưa) — Chồng 3D lên ảnh mẫu để căn chỉnh (branch `feat/hero-3d-align`, chưa push)
 
 - Render studio gần trực giao, căn theo tâm 2 bánh với ảnh mẫu (góc LEFT / BIKE SIDE), chồng 50/50 + đường viền (`docs/hero-3d/overlay/`, script `ov.py` + `probe.cjs` đo vị trí xương so với điểm mốc đo trên ảnh mẫu).
