@@ -4,6 +4,27 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 
 ---
 
+## 2026-10-29 (chiều, 2) — Ghép hero 3D đã căn vào game, merge `feat/hero-3d-align` → `main`
+
+- Game (web build) chạy với xe + người lái mới ở menu và trong lượt chơi Endless (kiểm tra headless: Play → bỏ qua hướng dẫn → Endless → GO).
+- Bản chơi được một file: `builds/sky-bike-run-hero3d.html` (bundle bằng bun, ảnh UI nhúng base64, three 0.169 tải từ jsDelivr qua import map → cần mạng). Mô hình GLB không tải được trong bản này nên game dùng xe dựng bằng code (đúng hero 3D).
+- Chưa chạy `npm test` / `build:tiktok` (npm bị chặn trong phiên cloud).
+
+## 2026-10-29 (chiều) — Căn lệch lần 2 + ánh sáng chi tiết (branch `feat/hero-3d-align`, chưa push)
+
+- Đo độ trùng hình bóng (IoU) với ảnh mẫu bằng `docs/hero-3d/overlay/sil.py`: trung bình 0.729 (main) → 0.790 (lần 1) → 0.803; ngang trái 0.734 → 0.881, xe ngang 0.854 → 0.916.
+- Người: lưng ngắn lại (`TORSO_K` 0.82, hình thân nội suy theo), tay dài hơn (`UPPER_ARM_LEN` 0.29 / `FOREARM_LEN` 0.27) để với tới tay lái từ tư thế ngồi thẳng, lưng dày hơn, hông nâng, gác chân 0.488/0.335. Các khớp lệch ảnh mẫu ≤4 cm.
+- Xe: kính chắn gió thấp/lùi thêm, mặt trên mũi thấp 2.5 cm, đuôi cao thêm ~1.4 cm, thêm ốp tối giữa yên và bánh sau.
+- Ánh sáng: thấu kính đèn pha emissive 2.4 (bloom bắt), quầng sáng hướng trước ở 2 đèn, SpotLight "Headlight" rọi đường phía trước (không đổ bóng), quầng sáng đèn hậu hướng sau; cạnh vát sáng (`edgeRim`, vật liệu `bikeEdge`) chạy theo mép tấm ốp bạc chính và tấm "<".
+- Tam giác: LOD0 ~72k, LOD1 ~49k; thêm ~7 mesh quầng sáng + 1 đèn. Typecheck 15 lỗi có sẵn.
+
+## 2026-10-29 (trưa) — Chồng 3D lên ảnh mẫu để căn chỉnh (branch `feat/hero-3d-align`, chưa push)
+
+- Render studio gần trực giao, căn theo tâm 2 bánh với ảnh mẫu (góc LEFT / BIKE SIDE), chồng 50/50 + đường viền (`docs/hero-3d/overlay/`, script `ov.py` + `probe.cjs` đo vị trí xương so với điểm mốc đo trên ảnh mẫu).
+- Người lái: từ dáng nằm rạp sang ngồi sport thẳng lưng như ảnh mẫu — `BIKE_ERGO` pelvis (0.97, 0.425), gác chân (0.47, 0.32); pelvisPitch −0.15, spineFlex −0.13; đùi 0.34 m / cẳng chân 0.41 m (`THIGH_LEN`/`SHIN_LEN`, hình chân được nội suy theo); lưng dày hơn; mũ phóng 1.08 (`HELMET_SCALE`); `RIDER_SCALE` (=1) để chỉnh cỡ người nếu cần.
+- Độ lệch khớp so với ảnh mẫu (góc ngang trái): trước 10–32 cm, sau ≤5 cm.
+- Xe: kính chắn gió dựng dốc, đỉnh lùi ~6 cm. Mũi xe vẫn dài hơn ảnh mẫu ~5–10 cm (chưa sửa).
+
 ## 2026-10-29 (sáng) — Chốt hero 3D: cổ + mũ giống thật, merge vào `main`
 
 - Mũ: mép dưới vỏ theo dáng mũ thật (sâu ở quai hàm/cằm, vồng lên ở tai, xuống lại ở gáy) thay cho mặt cắt tròn phẳng; tỉ lệ dài hơn (≈23×25×30 cm); kính lớn hơn; viền cao su cuộn theo mép dưới + lớp lót tối đóng kín đáy (không còn nhìn xuyên vỏ); lẫy mở kính.

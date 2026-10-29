@@ -24,6 +24,8 @@ const FRONT = Math.PI * 1.5; // SphereGeometry phi that faces -Z
 const BACK = Math.PI * 0.5;
 /** UV v of the shell spans polar angle 0..SHELL_THETA (the deepest point of the bottom edge) */
 const SHELL_THETA = 2.6;
+/** overall helmet size, overlay-matched to the reference LEFT view */
+const HELMET_SCALE = 1.08;
 /**
  * Bottom edge of the shell (polar angle where it ends) as a function of phi, like a real full-face
  * helmet: deep at the chin bar, rising over the jaw to the ear, dropping again over the nape.
@@ -317,5 +319,7 @@ export function buildHelmetParts(mats: BikeRiderMaterials, detail = 1): { geo: T
     geo: withColor(shellBlock((u, t) => [FRONT - 0.5 + u * 0.12, VISOR.bottom - 0.12 + t * 0.07], () => 0.012, 1.016, 1, 1), 0x2b313c),
     mat: mats.riderHelmet,
   });
+  // the reference draws a large helmet (~32 cm tall with the chin bar): scale the whole helmet about the Head bone
+  for (const { geo } of out) geo.scale(HELMET_SCALE, HELMET_SCALE, HELMET_SCALE);
   return out;
 }
