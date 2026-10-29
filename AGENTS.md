@@ -23,6 +23,8 @@ npm test               # fairness + difficulty + air-lane + EXP calibration + ra
 npm run build          # dist/ (multi-file static build)
 npm run build:single   # dist/index.html, everything inlined (one shareable file)
 npm run build:tiktok   # v3 native: tiktok/game.js + tiktok/assets (the folder uploaded to TikTok)
+                       # HS SDK key is NOT in git: set HS_SDK_KEY or create hs.local.json {"sdkKey":"sk_live_…"}
+                       # (git-ignored); never commit tiktok/game.js with the real key (public repo)
 npm run check:tiktok   # HS SDK check on a temp copy of tiktok/ — must stay at 0 FAIL
 npm run pack:tiktok    # tiktok-tiktok.zip — the file to upload to TikTok
 npm run preview:tiktok # the native build in a desktop phone frame (127.0.0.1:8090)

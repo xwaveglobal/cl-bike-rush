@@ -160,6 +160,23 @@ else await buildEsbuild();
   } else console.warn('⚠ typescript not found: game.js left at the bundler output level');
 }
 
+// HS SDK key: kept out of git (public repo). Swap the placeholder from HS_SDK_KEY or hs.local.json.
+{
+  const f = join(out, 'game.js');
+  let key = process.env.HS_SDK_KEY || '';
+  const local = join(root, 'hs.local.json');
+  if (!key && existsSync(local)) {
+    try { key = JSON.parse(readFileSync(local, 'utf8')).sdkKey || ''; } catch (e) { throw new Error('hs.local.json is not valid JSON: ' + e.message); }
+  }
+  const js = readFileSync(f, 'utf8');
+  if (key) {
+    writeFileSync(f, js.split('__HS_SDK_KEY__').join(key));
+    console.log('HS SDK key injected into game.js (do not commit tiktok/game.js with the real key)');
+  } else if (js.includes('__HS_SDK_KEY__')) {
+    console.warn('⚠ no HS SDK key: set HS_SDK_KEY or create hs.local.json {"sdkKey":"sk_live_…"} — HS features stay offline');
+  }
+}
+
 // TikTok refuses 0-byte files; report sizes against the 4 MB main-package limit
 let total = 0;
 const walk = (d) => {

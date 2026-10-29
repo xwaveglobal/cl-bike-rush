@@ -24,6 +24,8 @@ const HSGame = hsModule && typeof hsModule.profile === 'function' ? hsModule : (
 
 /** HS credentials: Game ID = the TikTok App ID; SDK key from the HS dashboard (never the TikTok Client Secret). */
 const GAME_ID = '7698594517263403028';
+// The real key is NOT committed (public repo): scripts/build-tiktok.mjs swaps this placeholder for
+// HS_SDK_KEY (env) or hs.local.json { "sdkKey": "sk_live_…" } (git-ignored) when it writes tiktok/game.js.
 const SDK_KEY = '__HS_SDK_KEY__';
 
 /**

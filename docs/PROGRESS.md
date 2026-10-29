@@ -9,6 +9,7 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 - Mũ: mép dưới vỏ theo dáng mũ thật (sâu ở quai hàm/cằm, vồng lên ở tai, xuống lại ở gáy) thay cho mặt cắt tròn phẳng; tỉ lệ dài hơn (≈23×25×30 cm); kính lớn hơn; viền cao su cuộn theo mép dưới + lớp lót tối đóng kín đáy (không còn nhìn xuyên vỏ); lẫy mở kính.
 - Cổ: thon và ngắn lại, nằm gọn trong mũ; cổ áo đen với một đường viền xanh mảnh (bỏ dải xanh to trông như vòng tròn quanh cổ).
 - Tam giác: LOD0 ~71k, LOD1 ~48k, LOD2 ~34k. Typecheck 15 lỗi có sẵn.
+- Bảo mật: repo public nên SDK key HS (`sk_live_…`) đã được gỡ khỏi toàn bộ lịch sử chưa push (`src/native/hs.ts`, `tiktok/game.js` dùng chỗ trống `__HS_SDK_KEY__`). `npm run build:tiktok` tự chèn key từ biến môi trường `HS_SDK_KEY` hoặc file `hs.local.json` (đã git-ignore). Không commit `tiktok/game.js` có key thật.
 - Nhánh: `feat/hero-3d` merge vào `main`; `run-old` tạo từ `main` trước khi merge (bản Sky Bike Run preview / Comic Speed) để phát triển tiếp thành game.
 
 ## 2026-10-29 — Trau chuốt hero 3D để đưa vào game (branch `feat/hero-3d`)
