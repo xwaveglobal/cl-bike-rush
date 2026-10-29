@@ -4,6 +4,13 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 
 ---
 
+## 2026-10-29 (sáng) — Chốt hero 3D: cổ + mũ giống thật, merge vào `main`
+
+- Mũ: mép dưới vỏ theo dáng mũ thật (sâu ở quai hàm/cằm, vồng lên ở tai, xuống lại ở gáy) thay cho mặt cắt tròn phẳng; tỉ lệ dài hơn (≈23×25×30 cm); kính lớn hơn; viền cao su cuộn theo mép dưới + lớp lót tối đóng kín đáy (không còn nhìn xuyên vỏ); lẫy mở kính.
+- Cổ: thon và ngắn lại, nằm gọn trong mũ; cổ áo đen với một đường viền xanh mảnh (bỏ dải xanh to trông như vòng tròn quanh cổ).
+- Tam giác: LOD0 ~71k, LOD1 ~48k, LOD2 ~34k. Typecheck 15 lỗi có sẵn.
+- Nhánh: `feat/hero-3d` merge vào `main`; `run-old` tạo từ `main` trước khi merge (bản Sky Bike Run preview / Comic Speed) để phát triển tiếp thành game.
+
 ## 2026-10-29 — Trau chuốt hero 3D để đưa vào game (branch `feat/hero-3d`)
 
 - Texture mũ và atlas bộ đồ chuyển sang `THREE.DataTexture` (mảng byte thuần), không còn dùng `createImageData/putImageData` của canvas 2D → chạy được cả bản web lẫn bản TikTok native (canvas của adapter có thể không có ImageData).

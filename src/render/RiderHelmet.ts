@@ -17,12 +17,31 @@ import type { BikeRiderMaterials } from './BikeRiderAsset.ts';
  */
 
 /** helmet centre and radii in Head-local space (sized to the rider's body proportions) */
-const C = new THREE.Vector3(0, 0.08, -0.008);
-const RAD = new THREE.Vector3(0.106, 0.112, 0.13);
+const C = new THREE.Vector3(0, 0.082, -0.014);
+// real race-helmet proportions: ~23 cm wide, ~25 cm tall (more with the chin bar), ~30 cm long
+const RAD = new THREE.Vector3(0.11, 0.118, 0.145);
 const FRONT = Math.PI * 1.5; // SphereGeometry phi that faces -Z
 const BACK = Math.PI * 0.5;
-/** the shell is a sphere cut at this polar angle (open bottom); its UV v spans 0..SHELL_THETA */
-const SHELL_THETA = 2.42;
+/** UV v of the shell spans polar angle 0..SHELL_THETA (the deepest point of the bottom edge) */
+const SHELL_THETA = 2.6;
+/**
+ * Bottom edge of the shell (polar angle where it ends) as a function of phi, like a real full-face
+ * helmet: deep at the chin bar, rising over the jaw to the ear, dropping again over the nape.
+ * d = angular distance from the front (0 = chin, PI = back of the neck).
+ */
+const CUT_TABLE: [number, number][] = [[0, 2.56], [0.5, 2.46], [1.0, 2.2], [1.5, 2.04], [2.05, 2.16], [2.6, 2.4], [Math.PI, 2.5]];
+function cut(phi: number) {
+  let d = Math.abs(((phi - FRONT) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+  d = Math.min(Math.PI, d);
+  for (let k = 0; k < CUT_TABLE.length - 1; k++) {
+    const [d0, c0] = CUT_TABLE[k], [d1, c1] = CUT_TABLE[k + 1];
+    if (d <= d1) {
+      const t = (d - d0) / (d1 - d0), s = t * t * (3 - 2 * t);
+      return c0 + (c1 - c0) * s;
+    }
+  }
+  return CUT_TABLE[CUT_TABLE.length - 1][1];
+}
 
 /** chin bar: push the lower front of the unit sphere forward and down */
 function chin(v: THREE.Vector3) {
@@ -48,7 +67,7 @@ function withColor(g: THREE.BufferGeometry, hex = 0xffffff) {
 
 // ------------------------------------------------------------------------------- graphics texture
 /** visor port in sphere angles (phi around Y, theta from the top) */
-const VISOR = { half: 0.84, top: 1.14, bottom: 1.7 };
+const VISOR = { half: 0.9, top: 1.1, bottom: 1.76 };
 
 /**
  * The livery is evaluated per texel in 3D (unit-sphere direction) instead of drawing 2D polygons in
@@ -80,8 +99,8 @@ function helmetTexture(): THREE.DataTexture {
     }
     return SW[SW.length - 1][1];
   };
-  const COS = new Float32Array(W), SIN = new Float32Array(W);
-  for (let px = 0; px < W; px++) { const phi = ((px + 0.5) / W) * Math.PI * 2; COS[px] = Math.cos(phi); SIN[px] = Math.sin(phi); }
+  const COS = new Float32Array(W), SIN = new Float32Array(W), CUT = new Float32Array(W);
+  for (let px = 0; px < W; px++) { const phi = ((px + 0.5) / W) * Math.PI * 2; COS[px] = Math.cos(phi); SIN[px] = Math.sin(phi); CUT[px] = cut(phi); }
   for (let py = 0; py < H; py++) {
     const th = ((py + 0.5) / H) * SHELL_THETA;
     const st = Math.sin(th), y = Math.cos(th);
@@ -125,7 +144,8 @@ function helmetTexture(): THREE.DataTexture {
       // --- chin vent silver mark
       if (f > 0.85 && y < -0.62 && y > -0.74 && ax < 0.12) c = SILVER_D;
       // --- bottom rubber edge
-      if (th > 2.3) c = RUBBER;
+      // rubber edge trim following the shell's bottom edge
+      if (th > CUT[px] - 0.06) c = RUBBER;
       const o = ((H - 1 - py) * W + px) * 4; // DataTexture row 0 = v 0 = bottom of the shell
       data[o] = c[0];
       data[o + 1] = c[1];
@@ -166,13 +186,18 @@ export function buildHelmetParts(mats: BikeRiderMaterials, detail = 1): { geo: T
 
   // shell (open at the bottom)
   {
+    // rows are re-spaced per column so the bottom edge follows cut(phi); uv v keeps the true angle
     const g = new THREE.SphereGeometry(1, seg(64), seg(44), 0, Math.PI * 2, 0, SHELL_THETA);
     const p = g.attributes.position as THREE.BufferAttribute;
+    const uv = g.attributes.uv as THREE.BufferAttribute;
     const v = new THREE.Vector3();
     for (let i = 0; i < p.count; i++) {
-      v.fromBufferAttribute(p, i);
+      const phi = uv.getX(i) * Math.PI * 2;
+      const th = (1 - uv.getY(i)) * cut(phi);
+      v.set(-Math.cos(phi) * Math.sin(th), Math.cos(th), Math.sin(phi) * Math.sin(th));
       chin(v);
       p.setXYZ(i, C.x + v.x * RAD.x, C.y + v.y * RAD.y, C.z + v.z * RAD.z);
+      uv.setY(i, 1 - th / SHELL_THETA);
     }
     g.computeVertexNormals();
     out.push({ geo: withColor(g), mat: helmetMaterial() });
@@ -259,12 +284,38 @@ export function buildHelmetParts(mats: BikeRiderMaterials, detail = 1): { geo: T
   }
   // chin vent
   out.push({ geo: withColor(shellBlock((u, t) => [FRONT + u * 0.42, 2.02 + t * 0.12], () => 0.03, 1.0, 4, 2), 0x2b313c), mat: mats.riderHelmet });
-  // neck roll filling the bottom opening
+  // padded rubber trim rolled round the bottom edge + dark liner closing the opening (no see-through shell)
   {
-    const g = new THREE.TorusGeometry(0.066, 0.015, 10, seg(36));
-    g.rotateX(Math.PI / 2);
-    g.translate(0, C.y - RAD.y * 0.72, C.z + 0.012);
-    out.push({ geo: withColor(g, 0x15171c), mat: mats.riderSuit });
+    const n = seg(48);
+    const edge: THREE.Vector3[] = [];
+    for (let k = 0; k < n; k++) {
+      const phi = (k / n) * Math.PI * 2;
+      edge.push(onShell(phi, cut(phi) - 0.03, 0.975));
+    }
+    const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(edge, true), n * 2, 0.0125, 8, true);
+    out.push({ geo: withColor(tube, 0x15171c), mat: mats.riderSuit });
+    const centre = new THREE.Vector3(C.x, C.y - RAD.y * 0.35, C.z + 0.01);
+    const pos: number[] = [];
+    for (let k = 0; k < n; k++) {
+      const a = edge[k], b = edge[(k + 1) % n];
+      pos.push(centre.x, centre.y, centre.z, a.x, a.y, a.z, b.x, b.y, b.z);
+    }
+    const liner = new THREE.BufferGeometry();
+    liner.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    liner.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((pos.length / 3) * 2).fill(0), 2));
+    liner.computeVertexNormals();
+    // face downwards / outwards: flip winding if the first normal points up
+    if ((liner.attributes.normal as THREE.BufferAttribute).getY(0) > 0) {
+      for (let k = 0; k < pos.length; k += 9) for (let j = 0; j < 3; j++) { const t = pos[k + 3 + j]; pos[k + 3 + j] = pos[k + 6 + j]; pos[k + 6 + j] = t; }
+      liner.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      liner.computeVertexNormals();
+    }
+    out.push({ geo: withColor(liner, 0x0b0c10), mat: mats.riderSuit });
   }
+  // visor lift tab at the lower left corner of the visor
+  out.push({
+    geo: withColor(shellBlock((u, t) => [FRONT - 0.5 + u * 0.12, VISOR.bottom - 0.12 + t * 0.07], () => 0.012, 1.016, 1, 1), 0x2b313c),
+    mat: mats.riderHelmet,
+  });
   return out;
 }

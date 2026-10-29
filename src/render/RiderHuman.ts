@@ -352,7 +352,8 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     if (side > 0.86 && p.y > 0.86 && p.y < 1.12) c = COL.cobalt;
     else if (side > 0.8 && side <= 0.86 && p.y > 0.86 && p.y < 1.12) c = SEAM;
     if (frontN > 0.45 && p.y > 1.13 && ax < 0.12) c = COL.silver;
-    if (p.y > 1.29 && p.y < 1.33) c = COL.cobalt;
+    // collar: black with a thin cobalt piping line (the old wide blue band read as a ring round the neck)
+    if (p.y > 1.296 && p.y < 1.304) c = COL.cobalt;
     return c;
   };
   add(
@@ -366,9 +367,10 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
         { c: [0, 1.14, 0.06], ru: 0.18, rv: 0.11, rvN: 0.104, p: 2.3 },
         { c: [0, 1.212, 0.035], ru: 0.2, rv: 0.1, rvN: 0.092, p: 2.5 },
         { c: [0, 1.262, 0.02], ru: 0.165, rv: 0.085, rvN: 0.074, p: 2.4 },
-        { c: [0, 1.302, 0.008], ru: 0.088, rv: 0.07, rvN: 0.062 },
-        { c: [0, 1.37, -0.01], ru: 0.056, rv: 0.052, rvN: 0.05 },
-        { c: [0, 1.41, -0.015], ru: 0.02, rv: 0.02 },
+        { c: [0, 1.3, 0.008], ru: 0.08, rv: 0.064, rvN: 0.058 },
+        { c: [0, 1.345, -0.004], ru: 0.054, rv: 0.05, rvN: 0.047 },
+        { c: [0, 1.39, -0.014], ru: 0.046, rv: 0.044, rvN: 0.042 },
+        { c: [0, 1.425, -0.02], ru: 0.02, rv: 0.02 },
       ],
       torsoPaint, 34, 5,
     ),
