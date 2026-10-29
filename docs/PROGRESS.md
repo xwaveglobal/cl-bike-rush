@@ -4,6 +4,12 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 
 ---
 
+## 2026-10-29 (chiều, 2) — Ghép hero 3D đã căn vào game, merge `feat/hero-3d-align` → `main`
+
+- Game (web build) chạy với xe + người lái mới ở menu và trong lượt chơi Endless (kiểm tra headless: Play → bỏ qua hướng dẫn → Endless → GO).
+- Bản chơi được một file: `builds/sky-bike-run-hero3d.html` (bundle bằng bun, ảnh UI nhúng base64, three 0.169 tải từ jsDelivr qua import map → cần mạng). Mô hình GLB không tải được trong bản này nên game dùng xe dựng bằng code (đúng hero 3D).
+- Chưa chạy `npm test` / `build:tiktok` (npm bị chặn trong phiên cloud).
+
 ## 2026-10-29 (chiều) — Căn lệch lần 2 + ánh sáng chi tiết (branch `feat/hero-3d-align`, chưa push)
 
 - Đo độ trùng hình bóng (IoU) với ảnh mẫu bằng `docs/hero-3d/overlay/sil.py`: trung bình 0.729 (main) → 0.790 (lần 1) → 0.803; ngang trái 0.734 → 0.881, xe ngang 0.854 → 0.916.
