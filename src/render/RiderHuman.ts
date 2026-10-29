@@ -48,6 +48,15 @@ const COL = {
 export /** detail scale for radial/segment counts (set per build from the LOD level) */
 let LOD_SCALE = 1;
 
+/** leg segment lengths (hip->knee, knee->ankle); tuned so the knee lands on the reference LEFT view */
+export const THIGH_LEN = 0.34;
+export const SHIN_LEN = 0.41;
+/** leg geometry is authored for a 0.37 / 0.36 leg: remap thigh-space z (and its inverse for painters) */
+const lz = (z: number) => (z >= 0 ? z : z >= -0.37 ? (z * THIGH_LEN) / 0.37 : -THIGH_LEN + ((z + 0.37) * SHIN_LEN) / 0.36);
+const lzInv = (z: number) => (z >= 0 ? z : z >= -THIGH_LEN ? (z * 0.37) / THIGH_LEN : -0.37 + ((z + THIGH_LEN) * 0.36) / SHIN_LEN);
+/** shin-space z authored for a 0.36 shin */
+const sz = (z: number) => (z * SHIN_LEN) / 0.36;
+
 export const catmull = (p0: number, p1: number, p2: number, p3: number, t: number) =>
   0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
 
@@ -256,11 +265,11 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
   const forearmR = makeBone('Forearm_R', upperArmR, 0, 0, -0.27);
   const handR = makeBone('Hand_R', forearmR, 0, 0, -0.25);
   const thighL = makeBone('Thigh_L', pelvis, -0.135, -0.02, -0.02);
-  const shinL = makeBone('Shin_L', thighL, 0, 0, -0.37);
-  const footL = makeBone('Foot_L', shinL, 0, 0, -0.36);
+  const shinL = makeBone('Shin_L', thighL, 0, 0, -THIGH_LEN);
+  const footL = makeBone('Foot_L', shinL, 0, 0, -SHIN_LEN);
   const thighR = makeBone('Thigh_R', pelvis, 0.135, -0.02, -0.02);
-  const shinR = makeBone('Shin_R', thighR, 0, 0, -0.37);
-  const footR = makeBone('Foot_R', shinR, 0, 0, -0.36);
+  const shinR = makeBone('Shin_R', thighR, 0, 0, -THIGH_LEN);
+  const footR = makeBone('Foot_R', shinR, 0, 0, -SHIN_LEN);
   const boneList = [pelvis, spine1, spine2, chest, neck, head, upperArmL, forearmL, handL, upperArmR, forearmR, handR, thighL, shinL, footL, thighR, shinR, footR];
   const boneIdx: Record<string, number> = {};
   boneList.forEach((b, i) => (boneIdx[b.name] = i));
@@ -363,9 +372,9 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
         { c: [0, 0.74, 0.24], ru: 0.124, rv: 0.07, rvN: 0.078, p: 2.2 },
         { c: [0, 0.83, 0.21], ru: 0.13, rv: 0.074, rvN: 0.082, p: 2.2 },
         { c: [0, 0.93, 0.165], ru: 0.136, rv: 0.082, rvN: 0.084, p: 2.2 },
-        { c: [0, 1.04, 0.11], ru: 0.156, rv: 0.09, rvN: 0.096, p: 2.2 },
-        { c: [0, 1.14, 0.06], ru: 0.18, rv: 0.11, rvN: 0.104, p: 2.3 },
-        { c: [0, 1.212, 0.035], ru: 0.2, rv: 0.1, rvN: 0.092, p: 2.5 },
+        { c: [0, 1.04, 0.11], ru: 0.156, rv: 0.105, rvN: 0.096, p: 2.2 },
+        { c: [0, 1.14, 0.06], ru: 0.18, rv: 0.13, rvN: 0.104, p: 2.3 },
+        { c: [0, 1.212, 0.035], ru: 0.2, rv: 0.118, rvN: 0.092, p: 2.5 },
         { c: [0, 1.262, 0.02], ru: 0.165, rv: 0.085, rvN: 0.074, p: 2.4 },
         { c: [0, 1.3, 0.008], ru: 0.08, rv: 0.064, rvN: 0.058 },
         { c: [0, 1.345, -0.004], ru: 0.054, rv: 0.05, rvN: 0.047 },
@@ -456,7 +465,8 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     ['R', 1, thighR, shinR, footR],
   ] as const) {
     // ---- LEG: hip → ankle in one piece (Thigh local, runs along -Z; +v becomes the knee front)
-    const legPaint: Painter = (p, n) => {
+    const legPaint: Painter = (q, n) => {
+      const p = { z: lzInv(q.z) };
       const out = n.x * sx;
       if (p.z > -0.05 && out > 0.45) return COL.silver; // hip slider patch
       if (p.z > -0.3 + (1 - out) * 0.25 && p.z < -0.07 && out > 0.5) return COL.cobalt; // outer thigh panel
@@ -468,43 +478,43 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
     add(
       loft(
         [
-          { c: [0, 0, 0.07], ru: 0.04, rv: 0.04 },
-          { c: [0, 0, 0.035], ru: 0.07, rv: 0.07, rvN: 0.066 },
-          { c: [sx * 0.004, 0, -0.06], ru: 0.076, rv: 0.072, rvN: 0.07 },
-          { c: [0, 0, -0.18], ru: 0.068, rv: 0.064, rvN: 0.062 },
-          { c: [0, 0, -0.3], ru: 0.062, rv: 0.058, rvN: 0.057 },
-          { c: [0, 0, -0.37], ru: 0.055, rv: 0.056, rvN: 0.052 },
-          { c: [0, 0, -0.45], ru: 0.055, rv: 0.05, rvN: 0.062 },
-          { c: [0, 0, -0.55], ru: 0.049, rv: 0.044, rvN: 0.053 },
-          { c: [0, 0, -0.66], ru: 0.042, rv: 0.039, rvN: 0.041 },
-          { c: [0, 0, -0.725], ru: 0.036, rv: 0.035, rvN: 0.035 },
-          { c: [0, 0, -0.75], ru: 0.02, rv: 0.02 },
+          { c: [0, 0, lz(0.07)], ru: 0.04, rv: 0.04 },
+          { c: [0, 0, lz(0.035)], ru: 0.07, rv: 0.07, rvN: 0.066 },
+          { c: [sx * 0.004, 0, lz(-0.06)], ru: 0.076, rv: 0.072, rvN: 0.07 },
+          { c: [0, 0, lz(-0.18)], ru: 0.068, rv: 0.064, rvN: 0.062 },
+          { c: [0, 0, lz(-0.3)], ru: 0.062, rv: 0.058, rvN: 0.057 },
+          { c: [0, 0, lz(-0.37)], ru: 0.055, rv: 0.056, rvN: 0.052 },
+          { c: [0, 0, lz(-0.45)], ru: 0.055, rv: 0.05, rvN: 0.062 },
+          { c: [0, 0, lz(-0.55)], ru: 0.049, rv: 0.044, rvN: 0.053 },
+          { c: [0, 0, lz(-0.66)], ru: 0.042, rv: 0.039, rvN: 0.041 },
+          { c: [0, 0, lz(-0.725)], ru: 0.036, rv: 0.035, rvN: 0.035 },
+          { c: [0, 0, lz(-0.75)], ru: 0.02, rv: 0.02 },
         ],
         legPaint, 16, 3,
       ),
       suit, thigh, ['Pelvis', `Thigh_${sfx}`, `Shin_${sfx}`, `Foot_${sfx}`], 6,
     );
     // knee cap + outer knee puck
-    add(ellipsoid([0, 0.048, -0.37], [0.046, 0.012, 0.058], solid(COL.silverHi), { w: 20, h: 12 }),
+    add(ellipsoid([0, 0.048, lz(-0.37)], [0.046, 0.012, 0.058], solid(COL.silverHi), { w: 20, h: 12 }),
       mats.riderArmor, thigh, [`Thigh_${sfx}`, `Shin_${sfx}`], 6);
-    add(ellipsoid([sx * 0.056, 0.005, -0.38], [0.007, 0.036, 0.048], solid(COL.cobaltDeep), { w: 16, h: 10 }),
+    add(ellipsoid([sx * 0.056, 0.005, lz(-0.38)], [0.007, 0.036, 0.048], solid(COL.cobaltDeep), { w: 16, h: 10 }),
       mats.riderArmor, thigh, [`Thigh_${sfx}`, `Shin_${sfx}`], 6);
     // shin guard (two plates) over the shin
-    add(ellipsoid([0, 0.048, -0.5], [0.036, 0.008, 0.072], solid(COL.silverHi), { w: 14, h: 10 }),
+    add(ellipsoid([0, 0.048, lz(-0.5)], [0.036, 0.008, 0.072], solid(COL.silverHi), { w: 14, h: 10 }),
       mats.riderArmor, thigh, [`Shin_${sfx}`]);
-    add(ellipsoid([0, 0.044, -0.6], [0.032, 0.008, 0.052], solid(COL.cobalt), { w: 14, h: 10 }),
+    add(ellipsoid([0, 0.044, lz(-0.6)], [0.032, 0.008, 0.052], solid(COL.cobalt), { w: 14, h: 10 }),
       mats.riderArmor, thigh, [`Shin_${sfx}`]);
     // race boot shaft (Shin local) + foot
     add(
       loft(
         [
-          { c: [0, 0, -0.18], ru: 0.03, rv: 0.03 },
-          { c: [0, 0, -0.2], ru: 0.054, rv: 0.05, rvN: 0.058 },
-          { c: [0, 0, -0.29], ru: 0.048, rv: 0.044, rvN: 0.05 },
-          { c: [0, 0, -0.35], ru: 0.044, rv: 0.044, rvN: 0.044 },
-          { c: [0, 0, -0.375], ru: 0.03, rv: 0.03 },
+          { c: [0, 0, sz(-0.18)], ru: 0.03, rv: 0.03 },
+          { c: [0, 0, sz(-0.2)], ru: 0.054, rv: 0.05, rvN: 0.058 },
+          { c: [0, 0, sz(-0.29)], ru: 0.048, rv: 0.044, rvN: 0.05 },
+          { c: [0, 0, sz(-0.35)], ru: 0.044, rv: 0.044, rvN: 0.044 },
+          { c: [0, 0, sz(-0.375)], ru: 0.03, rv: 0.03 },
         ],
-        (p, n) => (p.z < -0.335 ? COL.silver : n.x * sx > 0.1 || n.y > 0.5 ? COL.cobalt : COL.black),
+        (p, n) => (p.z < sz(-0.335) ? COL.silver : n.x * sx > 0.1 || n.y > 0.5 ? COL.cobalt : COL.black),
         14, 2,
       ),
       suit, shin, [`Shin_${sfx}`, `Foot_${sfx}`], 6,
@@ -522,7 +532,7 @@ export function buildHumanRider(mats: BikeRiderMaterials, lod = 0) {
       ),
       suit, foot, [`Foot_${sfx}`],
     );
-    add(ellipsoid([0, 0.048, -0.27], [0.032, 0.007, 0.062], solid(COL.silverHi), { w: 12, h: 8 }),
+    add(ellipsoid([0, 0.048, sz(-0.27)], [0.032, 0.007, 0.062], solid(COL.silverHi), { w: 12, h: 8 }),
       mats.riderArmor, shin, [`Shin_${sfx}`]);
     add(ellipsoid([0, 0.0, 0.03], [0.04, 0.03, 0.02], solid(COL.silverHi), { w: 12, h: 8 }),
       mats.riderArmor, foot, [`Foot_${sfx}`]);

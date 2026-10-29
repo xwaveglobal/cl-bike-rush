@@ -444,9 +444,9 @@ export const BIKE_ERGO = {
   /** grip half-width and offset behind the steering pivot (pivot z = -0.52), grip height */
   gripX: 0.27, gripLocalZ: 0.165, gripY: 0.925,
   /** footpegs */
-  pegX: 0.2, pegY: 0.44, pegZ: 0.26,
-  /** pelvis rest position on the seat */
-  pelvisY: 0.95, pelvisZ: 0.28,
+  pegX: 0.2, pegY: 0.47, pegZ: 0.32,
+  /** pelvis rest position on the seat (overlay-aligned to the reference LEFT view: upright sport seat) */
+  pelvisY: 0.97, pelvisZ: 0.425,
 };
 
 // ----------------------------------------------------------------------------------- wheels
@@ -598,15 +598,15 @@ export function buildSportBike(M: BikeRiderMaterials, lod = 0) {
   P.add(ellipsoid([0, 0.71, -0.918], [0.03, 0.012, 0.03], solid(K.black), { w: 14, h: 8 }), M.bikeGloss);
   { const r = new THREE.BoxGeometry(0.03, 0.006, 0.01); r.translate(0, 0.703, -0.928); P.add(r, M.bikeRed); }
 
-  // ===== WINDSCREEN (tall, upright: top at z -0.46 y 1.17)
+  // ===== WINDSCREEN (overlay-aligned to the reference: rises steeply, peak at z ~-0.39 y ~1.14)
   {
     const keys = [
-      { z: -0.85, w: 0.075, y: 0.85, h: 0.0 },
-      { z: -0.76, w: 0.115, y: 0.875, h: 0.075 },
-      { z: -0.65, w: 0.138, y: 0.905, h: 0.16 },
-      { z: -0.55, w: 0.134, y: 0.93, h: 0.225 },
-      { z: -0.47, w: 0.112, y: 0.948, h: 0.235 },
-      { z: -0.43, w: 0.085, y: 0.955, h: 0.2 },
+      { z: -0.8, w: 0.075, y: 0.86, h: 0.0 },
+      { z: -0.7, w: 0.115, y: 0.885, h: 0.07 },
+      { z: -0.59, w: 0.136, y: 0.91, h: 0.15 },
+      { z: -0.49, w: 0.13, y: 0.93, h: 0.205 },
+      { z: -0.41, w: 0.106, y: 0.945, h: 0.2 },
+      { z: -0.37, w: 0.08, y: 0.952, h: 0.16 },
     ];
     const pos: number[] = [], idx: number[] = [];
     const RS = sub(24), ZS = sub(24);

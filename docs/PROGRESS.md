@@ -4,6 +4,13 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 
 ---
 
+## 2026-10-29 (trưa) — Chồng 3D lên ảnh mẫu để căn chỉnh (branch `feat/hero-3d-align`, chưa push)
+
+- Render studio gần trực giao, căn theo tâm 2 bánh với ảnh mẫu (góc LEFT / BIKE SIDE), chồng 50/50 + đường viền (`docs/hero-3d/overlay/`, script `ov.py` + `probe.cjs` đo vị trí xương so với điểm mốc đo trên ảnh mẫu).
+- Người lái: từ dáng nằm rạp sang ngồi sport thẳng lưng như ảnh mẫu — `BIKE_ERGO` pelvis (0.97, 0.425), gác chân (0.47, 0.32); pelvisPitch −0.15, spineFlex −0.13; đùi 0.34 m / cẳng chân 0.41 m (`THIGH_LEN`/`SHIN_LEN`, hình chân được nội suy theo); lưng dày hơn; mũ phóng 1.08 (`HELMET_SCALE`); `RIDER_SCALE` (=1) để chỉnh cỡ người nếu cần.
+- Độ lệch khớp so với ảnh mẫu (góc ngang trái): trước 10–32 cm, sau ≤5 cm.
+- Xe: kính chắn gió dựng dốc, đỉnh lùi ~6 cm. Mũi xe vẫn dài hơn ảnh mẫu ~5–10 cm (chưa sửa).
+
 ## 2026-10-29 (sáng) — Chốt hero 3D: cổ + mũ giống thật, merge vào `main`
 
 - Mũ: mép dưới vỏ theo dáng mũ thật (sâu ở quai hàm/cằm, vồng lên ở tai, xuống lại ở gáy) thay cho mặt cắt tròn phẳng; tỉ lệ dài hơn (≈23×25×30 cm); kính lớn hơn; viền cao su cuộn theo mép dưới + lớp lót tối đóng kín đáy (không còn nhìn xuyên vỏ); lẫy mở kính.
